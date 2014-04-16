@@ -6,25 +6,38 @@
             [clojurewerkz.elastisch.rest          :as esr]
             [clojurewerkz.elastisch.rest.index    :as esi]
             [clojurewerkz.elastisch.query         :as q]
-            [clojurewerkz.elastisch.rest.document :as esd]))
+            [clojurewerkz.elastisch.rest.document :as esd]
+            [clojurewerkz.elastisch.rest.bulk     :as esb]
+            [clojurewerkz.elastisch.rest.response :as esresp]))
 
-(defn file->zipper [uri-str]
-  (->> (xml/parse uri-str)
-       zip/xml-zip))
+(defn adjust-dtd-path [xml-str]
+  "Because Strings are parsed with the project dir as root
+  we need to fix the path to the DTD referenced in the XML"
+  (clojure.string/replace xml-str
+                          #"us-patent-application-v4\d{1}-\d{4}-\d{2}-\d{2}\.dtd"
+                          #(str "resources/parsedir/" %1)))
 
-(defn patent-files []
-  (let [directory (clojure.java.io/file "resources")
+(defn str->zipper [xml-str]
+  "Reads a string and returns an xml zipper"
+  (zip/xml-zip
+    (xml/parse
+      (java.io.ByteArrayInputStream.
+        (.getBytes
+          (adjust-dtd-path xml-str))))))
+
+(defn patent-application-files []
+  "Find all xmls in the resources/patent_archives/ directory"
+  (let [directory (clojure.java.io/file "resources/applications/")
         files (file-seq directory)]
-     (filter (fn [f] (re-find #"\.patent\.xml" f)) (map str files))))
+     (filter (fn [f] (re-find #"ipab.*\.xml" f)) (map str files))))
 
-(defn read-files [files]
-  (map #(patentxml->map (file->zipper %))
-       files))
-
-(def patents
-  (read-files (patent-files)))
-
-(last patents)
+(defn split-file [file]
+  "Splits archive file into strings at xml statements"
+  (let [fseq (with-open [rdr (clojure.java.io/reader file)] (reduce conj [] (line-seq rdr)))
+        xml-head "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        segments (partition 2 (partition-by #(= % xml-head) fseq))
+        patents-xml (map #(apply str (concat (first %) (second %))) segments)]
+    patents-xml))
 
 ; TITLE
 (defn invention-title [xml-zipper]
@@ -32,6 +45,21 @@
              :us-bibliographic-data-application
              :invention-title
              zf/text))
+
+; UNIQUE IDENTIFIER
+(defn publication-identifier [xml-zipper]
+  (let [get-in-pubref #(zf/xml1-> xml-zipper
+                       :us-bibliographic-data-application
+                       :publication-reference
+                       :document-id
+                       %
+                       zf/text)]
+    (str
+      (get-in-pubref :country)
+      (get-in-pubref :doc-number)
+      (get-in-pubref :kind)
+      (get-in-pubref :date))))
+
 ; ABSTRACT
 (defn invention-abstract [xml-zipper]
   (zf/xml1-> xml-zipper
@@ -42,8 +70,8 @@
 (defn inventors [xml-zipper]
   (zf/xml-> xml-zipper
             :us-bibliographic-data-application
-            :us-parties
-            :inventors
+            :us-parties ;; :parties
+            :inventors  ;; :applicants
             dzip/children-auto))
 
 (defn inventor->map [inventor-node]
@@ -71,32 +99,54 @@
   {:assignees (map assignee->map (assignees xml-zipper))
    :inventors (map inventor->map (inventors xml-zipper))
    :abstract (invention-abstract xml-zipper)
-   :title (invention-title xml-zipper)})
+   :title (invention-title xml-zipper)
+   :uid (publication-identifier xml-zipper)})
 
-(patentxml->map (file->zipper (first (patent-files))))
-(assignee->map (first (assignees (file->zipper (first patent-files)))))
-(map inventor-name (inventors (file->zipper (first patent-files))))
+(defn read-file [xml-archive]
+  "Reads one weeks patent archive and returns a seq of maps w/ results"
+  (map patentxml->map (map str->zipper (split-file xml-archive))))
 
 ; ELASTISCH
 (def cmapping
   { "patent"
     { :properties
-      { :inventors { :type "string" }}}})
+      { :inventors { :type "string" :index "not_analyzed" }}}})
+;; using analyzer :analyzer "whitespace" we can search for parts of the inventors name
+;; with :index "not_analyzed"
 
-(defn store-patent [patent]
-  (esd/create "patalyze_development" "patent" patent))
+;; BULK INSERTION
+(defn prepare-bulk-op [patents]
+  (esb/bulk-index
+    (map #(assoc % :_index "patalyze_development"
+                   :_type "patent"
+                   :_id (:uid %)) patents)))
 
-(esr/connect! "http://127.0.0.1:9200")
-;; creates an index with default settings and no custom mapping types
+(defn bulk-insert [patents]
+  (map #(esb/bulk (prepare-bulk-op %) :refresh true)
+       (partition-all 2000 patents)))
 
-(esi/delete "patalyze_development")
-(esd/delete-by-query-across-all-indexes-and-types (q/match-all))
-(esi/create "patalyze_development" :mappings cmapping)
+(defn index-file [f]
+  (bulk-insert (prepare-bulk-op (read-file f))))
 
-(map #(store-patent %) (take 100 patents))
+(index-file (first (patent-application-files)))
 
-(esd/search "patalyze_development" "patent" :query { :filter {:term {:inventors "Lowery"}}})
-(esd/search "patalyze_development" "patent" :query {:term {:inventors "Daniel Francis Lowery"}})
-(esd/search "patalyze_development" "patent" :query {:term {:title "plastic"}})
-(first patents)
-(esd/search "patalyze_development" "patent" :query (q/match-all))
+(comment
+  (esr/connect! "http://127.0.0.1:9200")
+  (esd/delete-by-query-across-all-indexes-and-types (q/match-all))
+  ;; creates an index with default settings and no custom mapping types
+(time (index-file (nth (patent-application-files) 4)))
+(esd/count "patalyze_development" "patent" (q/match-all))
+
+  (esd/count "patalyze_development" "patent" (q/match-all))
+  (esi/delete "patalyze_development")
+  (esi/create "patalyze_development" :mappings cmapping)
+  (esi/update-mapping "patalyze_development" "patent" :mapping cmapping)
+  (esi/refresh "patalyze_development")
+
+
+  (esd/search "patalyze_development" "patent" :query (q/term :inventors "Christopher D. Prest"))
+  (esd/search "patalyze_development" "patent" :query {:term {:inventors "Daniel Francis Lowery"}})
+  (esd/search "patalyze_development" "patent" :query (q/term :title "plastic"))
+
+  (esd/search "patalyze_development" "patent" :query (q/term :inventors "Prest"))
+  (esresp/total-hits (esd/search "patalyze_development" "patent" :query {:term {:title "plastic"}})))
