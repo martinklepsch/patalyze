@@ -30,6 +30,12 @@
         (.getBytes
           (adjust-dtd-path xml-str))))))
 
+(defn version-samples []
+  "Find all xmls in the resources/patent_archives/ directory"
+  (let [directory (clojure.java.io/file "resources/samples/")
+        files (file-seq directory)]
+    (map slurp (filter #(re-seq #".*\.xml" %) (map str files)))))
+
 (defn patent-application-files []
   "Find all xmls in the resources/patent_archives/ directory"
   (let [directory (clojure.java.io/file "resources/applications/")
