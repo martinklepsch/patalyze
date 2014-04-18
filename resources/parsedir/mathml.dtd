@@ -926,74 +926,74 @@ schema  -->
 
 <!-- ISO 9573-13 -->
 
-<!ENTITY % ent-isoamsa SYSTEM "isoamsa.ent" >
+<!ENTITY % ent-isoamsa SYSTEM "iso9573-13/isoamsa.ent" >
 %ent-isoamsa;
 
-<!ENTITY % ent-isoamsb SYSTEM "isoamsb.ent" >
+<!ENTITY % ent-isoamsb SYSTEM "iso9573-13/isoamsb.ent" >
 %ent-isoamsb;
 
-<!ENTITY % ent-isoamsc SYSTEM "isoamsc.ent" >
+<!ENTITY % ent-isoamsc SYSTEM "iso9573-13/isoamsc.ent" >
 %ent-isoamsc;
 
-<!ENTITY % ent-isoamsn SYSTEM "isoamsn.ent" >
+<!ENTITY % ent-isoamsn SYSTEM "iso9573-13/isoamsn.ent" >
 %ent-isoamsn;
 
-<!ENTITY % ent-isoamso SYSTEM "isoamso.ent" >
+<!ENTITY % ent-isoamso SYSTEM "iso9573-13/isoamso.ent" >
 %ent-isoamso;
 
-<!ENTITY % ent-isoamsr SYSTEM "isoamsr.ent" >
+<!ENTITY % ent-isoamsr SYSTEM "iso9573-13/isoamsr.ent" >
 %ent-isoamsr;
 
-<!ENTITY % ent-isogrk3 SYSTEM "isogrk3.ent" >
+<!ENTITY % ent-isogrk3 SYSTEM "iso9573-13/isogrk3.ent" >
 %ent-isogrk3;
 
-<!ENTITY % ent-isogrk4 SYSTEM "isogrk4.ent" >
+<!ENTITY % ent-isogrk4 SYSTEM "iso9573-13/isogrk4.ent" >
 %ent-isogrk4;
 
-<!ENTITY % ent-isomfrk SYSTEM "isomfrk.ent" >
+<!ENTITY % ent-isomfrk SYSTEM "iso9573-13/isomfrk.ent" >
 %ent-isomfrk;
 
-<!ENTITY % ent-isomopf SYSTEM "isomopf.ent" >
+<!ENTITY % ent-isomopf SYSTEM "iso9573-13/isomopf.ent" >
 %ent-isomopf;
 
-<!ENTITY % ent-isomscr SYSTEM "isomscr.ent" >
+<!ENTITY % ent-isomscr SYSTEM "iso9573-13/isomscr.ent" >
 %ent-isomscr;
 
-<!ENTITY % ent-isotech SYSTEM "isotech.ent" >
+<!ENTITY % ent-isotech SYSTEM "iso9573-13/isotech.ent" >
 %ent-isotech;
 
 
 
 <!-- ISO 8879 -->
 
-<!ENTITY % ent-isobox SYSTEM "isobox.ent" >
+<!ENTITY % ent-isobox SYSTEM "iso8879/isobox.ent" >
 %ent-isobox;
 
-<!ENTITY % ent-isocyr1 SYSTEM "isocyr1.ent" >
+<!ENTITY % ent-isocyr1 SYSTEM "iso8879/isocyr1.ent" >
 %ent-isocyr1;
 
-<!ENTITY % ent-isocyr2 SYSTEM "isocyr2.ent" >
+<!ENTITY % ent-isocyr2 SYSTEM "iso8879/isocyr2.ent" >
 %ent-isocyr2;
 
-<!ENTITY % ent-isodia SYSTEM "isodia.ent" >
+<!ENTITY % ent-isodia SYSTEM "iso8879/isodia.ent" >
 %ent-isodia;
 
-<!ENTITY % ent-isogrk1 SYSTEM "isogrk1.ent" >
+<!ENTITY % ent-isogrk1 SYSTEM "iso8879/isogrk1.ent" >
 %ent-isogrk1;
 
-<!ENTITY % ent-isogrk2 SYSTEM "isogrk2.ent" >
+<!ENTITY % ent-isogrk2 SYSTEM "iso8879/isogrk2.ent" >
 %ent-isogrk2;
 
-<!ENTITY % ent-isolat1 SYSTEM "isolat1.ent" >
+<!ENTITY % ent-isolat1 SYSTEM "iso8879/isolat1.ent" >
 %ent-isolat1;
 
-<!ENTITY % ent-isolat2 SYSTEM "isolat2.ent" >
+<!ENTITY % ent-isolat2 SYSTEM "iso8879/isolat2.ent" >
 %ent-isolat2;
 
-<!ENTITY % ent-isonum SYSTEM "isonum.ent" >
+<!ENTITY % ent-isonum SYSTEM "iso8879/isonum.ent" >
 %ent-isonum;
 
-<!ENTITY % ent-isopub SYSTEM "isopub.ent" >
+<!ENTITY % ent-isopub SYSTEM "iso8879/isopub.ent" >
 %ent-isopub;
 
 <!-- MathML aliases for characters defined above -->
