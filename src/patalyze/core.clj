@@ -40,7 +40,9 @@
   "Find all xmls in the resources/patent_archives/ directory"
   (let [directory (clojure.java.io/file "resources/applications/")
         files (file-seq directory)]
-     (filter (fn [f] (re-find #"pab.*\.xml" f)) (map str files))))
+     (sort-by
+       #(apply str (re-seq #"\d{8}" %))
+        (filter #(re-seq #"pab.*\.xml" %) (map str files)))))
 
 (defn split-file [file]
   "Splits archive file into strings at xml statements"
