@@ -11,11 +11,15 @@
             [clojurewerkz.elastisch.rest.bulk     :as esb]
             [clojurewerkz.elastisch.rest.response :as esresp]))
 
+(def dtd-matcher
+  (union-re-patterns #"us-patent-application-v4\d{1}-\d{4}-\d{2}-\d{2}\.dtd"
+                     #"pap-v\d{2}-\d{4}-\d{2}-\d{2}\.dtd"))
+
 (defn adjust-dtd-path [xml-str]
   "Because Strings are parsed with the project dir as root
   we need to fix the path to the DTD referenced in the XML"
   (clojure.string/replace xml-str
-                          #"us-patent-application-v4\d{1}-\d{4}-\d{2}-\d{2}\.dtd"
+                          dtd-matcher
                           #(str "resources/parsedir/" %1)))
 
 (defn str->zipper [xml-str]
@@ -119,10 +123,6 @@
 
 (defn union-re-patterns [& patterns]
   (re-pattern (apply str (interpose "|" (map #(str "(?:" % ")") patterns)))))
-
-(def dtd-matcher
-  (union-re-patterns #"us-patent-application-v4\d{1}-\d{4}-\d{2}-\d{2}\.dtd"
-                     #"pap-v\d{2}-\d{4}-\d{2}-\d{2}\.dtd"))
 
 (defn detect-version [xml-str]
   (match [(apply str (re-seq dtd-matcher xml-str))]
