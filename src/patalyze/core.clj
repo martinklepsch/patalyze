@@ -136,9 +136,13 @@
   (match [(apply str (re-seq dtd-matcher xml-str))]
      ["us-patent-application-v43-2012-12-04.dtd"] :v43
      ["us-patent-application-v42-2006-08-23.dtd"] :v42
+     ["us-patent-application-v41-2005-08-25.dtd"] :v41
      ["us-patent-application-v40-2004-12-02.dtd"] :v40
+     ["pap-v16-2002-01-01.dtd"]                   :v16
      ["pap-v15-2001-01-31.dtd"]                   :v15
      :else :not-recognized))
+
+;; (patentxml->map (nth (version-samples) 5))
 
 ; ELASTISCH
 (def cmapping
