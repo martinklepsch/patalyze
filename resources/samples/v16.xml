@@ -1,1 +1,78 @@
-<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE patent-application-publication SYSTEM "pap-v16-2002-01-01.dtd" [<!ENTITY US20040000001A1-20040101-D00000.TIF SYSTEM "US20040000001A1-20040101-D00000.TIF" NDATA TIF><!ENTITY US20040000001A1-20040101-D00001.TIF SYSTEM "US20040000001A1-20040101-D00001.TIF" NDATA TIF><!ENTITY US20040000001A1-20040101-D00002.TIF SYSTEM "US20040000001A1-20040101-D00002.TIF" NDATA TIF><!ENTITY US20040000001A1-20040101-D00003.TIF SYSTEM "US20040000001A1-20040101-D00003.TIF" NDATA TIF><!ENTITY US20040000001A1-20040101-D00004.TIF SYSTEM "US20040000001A1-20040101-D00004.TIF" NDATA TIF>]><patent-application-publication><subdoc-bibliographic-information><document-id><doc-number>20040000001</doc-number><kind-code>A1</kind-code><document-date>20040101</document-date></document-id><publication-filing-type>new</publication-filing-type><domestic-filing-data><application-number><doc-number>10185230</doc-number></application-number><application-number-series-code>10</application-number-series-code><filing-date>20020628</filing-date></domestic-filing-data><technical-information><classification-ipc><classification-ipc-primary><ipc>A41D005/00</ipc></classification-ipc-primary><classification-ipc-secondary><ipc>A41D007/00</ipc></classification-ipc-secondary><classification-ipc-edition>07</classification-ipc-edition></classification-ipc><classification-us><classification-us-primary><uspc><class>002</class><subclass>067000</subclass></uspc></classification-us-primary></classification-us><title-of-invention>Collapsible swimsuit</title-of-invention></technical-information><inventors><first-named-inventor><name><given-name>David</given-name><middle-name>C.</middle-name><family-name>Holland</family-name></name><residence><residence-us><city>Houston</city><state>TX</state><country-code>US</country-code></residence-us></residence><authority-applicant>INV</authority-applicant></first-named-inventor></inventors><correspondence-address><name-1>PAUL S MADAN</name-1><name-2>MADAN, MOSSMAN &amp; SRIRAM, PC</name-2><address><address-1>2603 AUGUSTA, SUITE 700</address-1><city>HOUSTON</city><state>TX</state><postalcode>77057-1130</postalcode><country><country-code>US</country-code></country></address></correspondence-address></subdoc-bibliographic-information><subdoc-abstract><paragraph id="A-0001" lvl="0">A collapsible swimsuit includes a loop for supporting the suit on the human body. The swimsuit also includes a pair of fastening devices which, when disengaged, make it possible to fold the body of the swimsuit and store it compactly into a pouch on the swimsuit. </paragraph></subdoc-abstract></patent-application-publication>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE patent-application-publication SYSTEM "pap-v16-2002-01-01.dtd" [
+<!ENTITY US20040000001A1-20040101-D00000.TIF SYSTEM "US20040000001A1-20040101-D00000.TIF" NDATA TIF>
+<!ENTITY US20040000001A1-20040101-D00001.TIF SYSTEM "US20040000001A1-20040101-D00001.TIF" NDATA TIF>
+<!ENTITY US20040000001A1-20040101-D00002.TIF SYSTEM "US20040000001A1-20040101-D00002.TIF" NDATA TIF>
+<!ENTITY US20040000001A1-20040101-D00003.TIF SYSTEM "US20040000001A1-20040101-D00003.TIF" NDATA TIF>
+<!ENTITY US20040000001A1-20040101-D00004.TIF SYSTEM "US20040000001A1-20040101-D00004.TIF" NDATA TIF>
+]>
+<patent-application-publication>
+  <subdoc-bibliographic-information>
+    <document-id>
+      <doc-number>20040000001</doc-number>
+      <kind-code>A1</kind-code>
+      <document-date>20040101</document-date>
+    </document-id>
+    <publication-filing-type>new</publication-filing-type>
+    <domestic-filing-data>
+      <application-number>
+        <doc-number>10185230</doc-number>
+      </application-number>
+      <application-number-series-code>10</application-number-series-code>
+      <filing-date>20020628</filing-date>
+    </domestic-filing-data>
+    <technical-information>
+      <classification-ipc>
+        <classification-ipc-primary>
+          <ipc>A41D005/00</ipc>
+        </classification-ipc-primary>
+        <classification-ipc-secondary>
+          <ipc>A41D007/00</ipc>
+        </classification-ipc-secondary>
+        <classification-ipc-edition>07</classification-ipc-edition>
+      </classification-ipc>
+      <classification-us>
+        <classification-us-primary>
+          <uspc>
+            <class>002</class>
+            <subclass>067000</subclass>
+          </uspc>
+        </classification-us-primary>
+      </classification-us>
+      <title-of-invention>Collapsible swimsuit</title-of-invention>
+    </technical-information>
+    <inventors>
+      <first-named-inventor>
+        <name>
+          <given-name>David</given-name>
+          <middle-name>C.</middle-name>
+          <family-name>Holland</family-name>
+        </name>
+        <residence>
+          <residence-us>
+            <city>Houston</city>
+            <state>TX</state>
+            <country-code>US</country-code>
+          </residence-us>
+        </residence>
+        <authority-applicant>INV</authority-applicant>
+      </first-named-inventor>
+    </inventors>
+    <correspondence-address>
+      <name-1>PAUL S MADAN</name-1>
+      <name-2>MADAN, MOSSMAN &amp; SRIRAM, PC</name-2>
+      <address>
+        <address-1>2603 AUGUSTA, SUITE 700</address-1>
+        <city>HOUSTON</city>
+        <state>TX</state>
+        <postalcode>77057-1130</postalcode>
+        <country>
+          <country-code>US</country-code>
+        </country>
+      </address>
+    </correspondence-address>
+  </subdoc-bibliographic-information>
+  <subdoc-abstract>
+    <paragraph id="A-0001" lvl="0">A collapsible swimsuit includes a loop for supporting the suit on the human body. The swimsuit also includes a pair of fastening devices which, when disengaged, make it possible to fold the body of the swimsuit and store it compactly into a pouch on the swimsuit. </paragraph>
+  </subdoc-abstract>
+</patent-application-publication>
