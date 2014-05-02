@@ -4,12 +4,16 @@
             [clojure.data.zip :as dzip]
             [clojure.data.zip.xml :as zf]
             [clojure.core.match :refer (match)]
+            [schema.core :as s]
             [clojurewerkz.elastisch.rest          :as esr]
             [clojurewerkz.elastisch.rest.index    :as esi]
             [clojurewerkz.elastisch.query         :as q]
             [clojurewerkz.elastisch.rest.document :as esd]
             [clojurewerkz.elastisch.rest.bulk     :as esb]
             [clojurewerkz.elastisch.rest.response :as esresp]))
+
+(defn union-re-patterns [& patterns]
+  (re-pattern (apply str (interpose "|" (map #(str "(?:" % ")") patterns)))))
 
 (def dtd-matcher
   (union-re-patterns #"us-patent-application-v4\d{1}-\d{4}-\d{2}-\d{2}\.dtd"
@@ -34,7 +38,8 @@
   "Find all xmls in the resources/patent_archives/ directory"
   (let [directory (clojure.java.io/file "resources/samples/")
         files (file-seq directory)]
-    (map slurp (filter #(re-seq #".*\.xml" %) (map str files)))))
+    (zipmap [:v15 :v16 :v40 :v41 :v42 :v43]
+            (map slurp (filter #(re-seq #".*\.xml" %) (map str files))))))
 
 (defn patent-application-files []
   "Find all xmls in the resources/patent_archives/ directory"
@@ -52,12 +57,24 @@
         patents-xml (map #(apply str (concat (first %) (second %))) segments)]
     patents-xml))
 
+(defn dispatch-version-path [version path-map]
+  (let [dispatched-version (prev-el version (keys path-map))]
+    (dispatched-version path-map)))
+
+; some utility functions to avoid duplication in paths for different versions
+(defn prev-el [el coll]
+  (cond
+    (some #{el} coll) el
+    :else             (last (first (partition-by #(= el %) (sort (conj coll el)))))))
+
 ; TITLE
-(defn invention-title [xml-zipper]
-  (zf/xml1-> xml-zipper
-             :us-bibliographic-data-application
-             :invention-title
-             zf/text))
+(defn invention-title [version xml-zipper]
+  (let [path (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :technical-information :title-of-invention]
+                                             :v40 [:us-bibliographic-data-application :invention-title]})
+        title-tag (apply zf/xml1-> xml-zipper path)]
+    (zf/text title-tag)))
+
+; DATES
 
 ; UNIQUE IDENTIFIER
 (defn publication-identifier [xml-zipper]
@@ -74,35 +91,36 @@
       (get-in-pubref :date))))
 
 ; ABSTRACT
-(defn invention-abstract [xml-zipper]
-  (zf/xml1-> xml-zipper
-             :abstract
-             zf/text))
+(defn invention-abstract [version xml-zipper]
+  (let [path (dispatch-version-path version {:v15 [:subdoc-abstract :paragraph]
+                                             :v40 [:abstract]})
+        abstract (apply zf/xml1-> xml-zipper path)]
+    (zf/text abstract)))
 
-; INVENTORS
+;; INVENTORS
+;; (reduce-kv (fn [out k v] (into out (map (fn [x] [k x]) v))) [] {:name {:first-name [:a-name :last-name]}})
+;; [:document-id [:country :doc-number :date :kind] zf/text]
+;; (let [[first more] [:name [:first-name [:test :a]]]] (for [x more] [first x]))
+;; (flatten [:name [:first-name [:test :a]]])
+;; [:name :first-name :test] [:name :first-name :a]
+;; [[:name :first-name] [:name :last-name]]
+
+(defn parse-inventor [version inventor-node]
+  (let [paths   (dispatch-version-path version {:v15 [[:name :given-name] [:name :middle-name] [:name :family-name]]
+                                                :v40 [[:addressbook :first-name] [:addressbook :last-name]]})
+        nodes   (map #(apply zf/xml1-> inventor-node %) paths)
+        fields  (map zf/text nodes)]
+    (clojure.string/join " " fields)))
+
 (defn inventors [version xml-zipper]
-  (cond
-    (= version :v43)
-    (zf/xml-> xml-zipper
-              :us-bibliographic-data-application
-              :us-parties ;; :parties
-              :inventors  ;; :applicants
-              dzip/children-auto)
-    (= version :v42)
-    (zf/xml-> xml-zipper
-              :us-bibliographic-data-application
-              :parties
-              :applicants
-              dzip/children-auto)))
+  (let [path (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :inventors]
+                                             :v40 [:us-bibliographic-data-application :parties :applicants]
+                                             :v43 [:us-bibliographic-data-application :us-parties :inventors]})
+        inventors (apply zf/xml-> xml-zipper path)]
+    (map #(parse-inventor version %)
+       (apply dzip/children-auto inventors))))
 
-(defn inventor->map [inventor-node]
-  (str (zf/xml1-> inventor-node :addressbook :first-name zf/text) " "
-       (zf/xml1-> inventor-node :addressbook :last-name zf/text)))
-;;   {:name (str (zf/xml1-> inventor-node :addressbook :first-name zf/text)
-;;               (zf/xml1-> inventor-node :addressbook :last-name zf/text))
-;;    :address (str (zf/xml1-> inventor-node :addressbook :address :city zf/text) ", "
-;;                  (zf/xml1-> inventor-node :addressbook :address :state zf/text) ", "
-;;                  (zf/xml1-> inventor-node :addressbook :address :country zf/text))})
+;; (map :inventors (map patentxml->map (version-samples)))
 
 ; ASSIGNEE
 (defn assignees [xml-zipper]
@@ -116,22 +134,6 @@
    :role (zf/xml1-> assignee-node :role zf/text)})
 
 ; PUTTING IT TOGETHER
-(defn patentxml->map [xml-str]
-  (let [version    (detect-version xml-str)
-        xml-zipper (str->zipper xml-str)]
-    {:assignees (map assignee->map (assignees xml-zipper))
-     :inventors (map inventor->map (inventors version xml-zipper))
-     :abstract (invention-abstract xml-zipper)
-     :title (invention-title xml-zipper)
-     :uid (publication-identifier xml-zipper)}))
-
-(defn read-file [xml-archive]
-  "Reads one weeks patent archive and returns a seq of maps w/ results"
-  (map patentxml->map (split-file xml-archive)))
-
-(defn union-re-patterns [& patterns]
-  (re-pattern (apply str (interpose "|" (map #(str "(?:" % ")") patterns)))))
-
 (defn detect-version [xml-str]
   (match [(apply str (re-seq dtd-matcher xml-str))]
      ["us-patent-application-v43-2012-12-04.dtd"] :v43
@@ -142,7 +144,27 @@
      ["pap-v15-2001-01-31.dtd"]                   :v15
      :else :not-recognized))
 
-;; (patentxml->map (nth (version-samples) 5))
+(defn patentxml->map [xml-str]
+  (let [version    (detect-version xml-str)
+        xml-zipper (str->zipper xml-str)]
+    {:assignees (map assignee->map (assignees xml-zipper))
+     :inventors (inventors version xml-zipper)
+     :abstract (invention-abstract version xml-zipper)
+     :title (invention-title version xml-zipper)
+     :uid (publication-identifier xml-zipper)}))
+
+(defn read-file [xml-archive]
+  "Reads one weeks patent archive and returns a seq of maps w/ results"
+  (map patentxml->map (split-file xml-archive)))
+
+(def PatentApplication
+  {:uid s/Str
+   :title s/Str
+   :abstract s/Str
+   :inventors  [(s/one s/Str "inventor")
+                s/Str]
+   :assignees [{:orgname s/Str
+               :role s/Str }]})
 
 ; ELASTISCH
 (def cmapping
