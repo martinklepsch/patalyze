@@ -63,9 +63,9 @@
 
 ; some utility functions to avoid duplication in paths for different versions
 (defn prev-el [el coll]
-  (cond
-    (some #{el} coll) el
-    :else             (last (first (partition-by #(= el %) (sort (conj coll el)))))))
+  (let [ss (apply sorted-set coll)
+        l  (subseq ss <= el)]
+    (last l)))
 
 ; TITLE
 (defn invention-title [version xml-zipper]
