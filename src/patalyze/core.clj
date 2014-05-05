@@ -42,31 +42,20 @@
     (zipmap [:v15 :v16 :v40 :v41 :v42 :v43]
             (map slurp (filter #(re-seq #".*\.xml" %) (map str files))))))
 
-(defn patent-application-files []
-  "Find all xmls in the resources/patent_archives/ directory"
-  (let [directory (clojure.java.io/file "resources/applications/")
-        files (file-seq directory)]
-     (sort-by
-       #(apply str (re-seq #"\d{8}" %))
-        (filter #(re-seq #"pab.*\.xml" %) (map str files)))))
-
-(defn split-file [file]
-  "Splits archive file into strings at xml statements"
-  (let [fseq (with-open [rdr (clojure.java.io/reader file)] (reduce conj [] (line-seq rdr)))
-        xml-head "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-        segments (partition 2 (partition-by #(= % xml-head) fseq))
-        patents-xml (map #(apply str (concat (first %) (second %))) segments)]
-    patents-xml))
-
-(defn dispatch-version-path [version path-map]
-  (let [dispatched-version (prev-el version (keys path-map))]
-    (dispatched-version path-map)))
+(defn test-parse-fn [f]
+  (let [zipped (into {} (for [[k v] (version-samples)] [k (parse v)]))]
+    (into {} (for [[k v] zipped] [k (f k v)]))))
 
 ; some utility functions to avoid duplication in paths for different versions
 (defn prev-el [el coll]
   (let [ss (apply sorted-set coll)
         l  (subseq ss <= el)]
     (last l)))
+
+(defn dispatch-version-path [version path-map]
+  (let [dispatched-version (prev-el version (keys path-map))]
+    (dispatched-version path-map)))
+
 
 ; TITLE
 (defn invention-title [version xml-resource]
@@ -143,7 +132,7 @@
 
 (defn read-file [xml-archive]
   "Reads one weeks patent archive and returns a seq of maps w/ results"
-  (map patentxml->map (split-file xml-archive)))
+  (map patentxml->map (retrieval/split-file xml-archive)))
 
 (def PatentApplication
   {:uid s/Str
