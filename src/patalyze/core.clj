@@ -1,10 +1,12 @@
 (ns patalyze.core
-  (:require [clojure.xml :as xml]
-            [clojure.zip :as zip]
-            [clojure.data.zip :as dzip]
+  (:require [patalyze.retrieval   :as retrieval]
+            [clojure.xml          :as xml]
+            [clojure.zip          :as zip]
+            [clojure.data.zip     :as dzip]
             [clojure.data.zip.xml :as zf]
-            [clojure.core.match :refer (match)]
-            [schema.core :as s]
+            [net.cgrand.enlive-html       :as html]
+            [clojure.core.match   :refer (match)]
+            [schema.core          :as s]
             [clojurewerkz.elastisch.rest          :as esr]
             [clojurewerkz.elastisch.rest.index    :as esi]
             [clojurewerkz.elastisch.query         :as q]
@@ -26,13 +28,12 @@
                           dtd-matcher
                           #(str "resources/parsedir/" %1)))
 
-(defn str->zipper [xml-str]
+(defn parse [xml-str]
   "Reads a string and returns an xml zipper"
-  (zip/xml-zip
-    (xml/parse
-      (java.io.ByteArrayInputStream.
-        (.getBytes
-          (adjust-dtd-path xml-str))))))
+  (html/xml-resource
+    (java.io.ByteArrayInputStream.
+      (.getBytes
+        (adjust-dtd-path xml-str)))))
 
 (defn version-samples []
   "Find all xmls in the resources/patent_archives/ directory"
@@ -68,70 +69,53 @@
     (last l)))
 
 ; TITLE
-(defn invention-title [version xml-zipper]
+(defn invention-title [version xml-resource]
   (let [path (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :technical-information :title-of-invention]
                                              :v40 [:us-bibliographic-data-application :invention-title]})
-        title-tag (apply zf/xml1-> xml-zipper path)]
-    (zf/text title-tag)))
+        title-tag (first (html/select xml-resource path))]
+    (html/text title-tag)))
 
 ; DATES
 
 ; UNIQUE IDENTIFIER
-(defn publication-identifier [xml-zipper]
-  (let [get-in-pubref #(zf/xml1-> xml-zipper
-                       :us-bibliographic-data-application
-                       :publication-reference
-                       :document-id
-                       %
-                       zf/text)]
-    (str
-      (get-in-pubref :country)
-      (get-in-pubref :doc-number)
-      (get-in-pubref :kind)
-      (get-in-pubref :date))))
+(defn publication-identifier [version xml-resource]
+  (let [paths (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :> :document-id :*]
+                                              :v40 [:us-bibliographic-data-application :publication-reference :document-id :*]})
+        document-id (html/select xml-resource paths)
+        tag-contents (html/texts document-id)]
+    (clojure.string/join "-" (remove #(= % "US") tag-contents))))
+
 
 ; ABSTRACT
-(defn invention-abstract [version xml-zipper]
+(defn invention-abstract [version xml-resource]
   (let [path (dispatch-version-path version {:v15 [:subdoc-abstract :paragraph]
                                              :v40 [:abstract]})
-        abstract (apply zf/xml1-> xml-zipper path)]
-    (zf/text abstract)))
-
-;; INVENTORS
-;; (reduce-kv (fn [out k v] (into out (map (fn [x] [k x]) v))) [] {:name {:first-name [:a-name :last-name]}})
-;; [:document-id [:country :doc-number :date :kind] zf/text]
-;; (let [[first more] [:name [:first-name [:test :a]]]] (for [x more] [first x]))
-;; (flatten [:name [:first-name [:test :a]]])
-;; [:name :first-name :test] [:name :first-name :a]
-;; [[:name :first-name] [:name :last-name]]
+        abstract (first (html/select xml-resource path))]
+    (clojure.string/trim (html/text abstract))))
 
 (defn parse-inventor [version inventor-node]
   (let [paths   (dispatch-version-path version {:v15 [[:name :given-name] [:name :middle-name] [:name :family-name]]
                                                 :v40 [[:addressbook :first-name] [:addressbook :last-name]]})
-        nodes   (map #(apply zf/xml1-> inventor-node %) paths)
-        fields  (map zf/text nodes)]
+        nodes   (map #(first (html/select inventor-node %)) paths)
+        fields  (html/texts nodes)]
     (clojure.string/join " " fields)))
 
-(defn inventors [version xml-zipper]
-  (let [path (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :inventors]
-                                             :v40 [:us-bibliographic-data-application :parties :applicants]
-                                             :v43 [:us-bibliographic-data-application :us-parties :inventors]})
-        inventors (apply zf/xml-> xml-zipper path)]
+(defn inventors [version xml-resource]
+  (let [path (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :inventors :> :*]
+                                             :v40 [:us-bibliographic-data-application :parties :applicants :> :*]
+                                             :v43 [:us-bibliographic-data-application :us-parties :inventors :> :*]})
+        inventors (html/select xml-resource path)]
     (map #(parse-inventor version %)
-       (apply dzip/children-auto inventors))))
+       inventors)))
 
-;; (map :inventors (map patentxml->map (version-samples)))
 
 ; ASSIGNEE
-(defn assignees [xml-zipper]
-  (zf/xml-> xml-zipper
-            :us-bibliographic-data-application
-            :assignees
-            dzip/children-auto))
-
-(defn assignee->map [assignee-node]
-  {:orgname (zf/xml1-> assignee-node :orgname zf/text)
-   :role (zf/xml1-> assignee-node :role zf/text)})
+(defn orgname [version xml-resource]
+  (let [path    (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :correspondence-address :name-2]
+                                                :v40 [:us-bibliographic-data-application :parties :correspondence-address :addressbook :name]
+                                                :v41 [:us-bibliographic-data-application :assignees :orgname]})
+        assignee (first (html/select xml-resource path))]
+   (html/text assignee)))
 
 ; PUTTING IT TOGETHER
 (defn detect-version [xml-str]
@@ -145,13 +129,17 @@
      :else :not-recognized))
 
 (defn patentxml->map [xml-str]
-  (let [version    (detect-version xml-str)
-        xml-zipper (str->zipper xml-str)]
-    {:assignees (map assignee->map (assignees xml-zipper))
-     :inventors (inventors version xml-zipper)
-     :abstract (invention-abstract version xml-zipper)
-     :title (invention-title version xml-zipper)
-     :uid (publication-identifier xml-zipper)}))
+;;   (try
+    (let [version      (detect-version xml-str)
+          xml-resource (parse xml-str)]
+      {:organization (orgname version xml-resource)
+       :inventors    (inventors version xml-resource)
+       :abstract     (invention-abstract version xml-resource)
+       :title        (invention-title version xml-resource)
+       :uid          (publication-identifier version xml-resource)
+       :plain-data   xml-str}))
+;;   (catch org.xml.sax.SAXParseException e {:error-msg (.getMessage e)
+;;                                           :xml-str   xml-str})))
 
 (defn read-file [xml-archive]
   "Reads one weeks patent archive and returns a seq of maps w/ results"
