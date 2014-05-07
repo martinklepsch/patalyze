@@ -1,6 +1,8 @@
 (ns patalyze.retrieval
-  (:require  [net.cgrand.enlive-html :as html]))
+  (:require [riemann.client :as r]
+            [net.cgrand.enlive-html :as html]))
 
+(def c (r/tcp-client {:host "127.0.0.1"}))
 (def ^:dynamic *applications-biblio-url* "http://www.google.com/googlebooks/uspto-patents-applications-biblio.html")
 
 (defn fetch-url [url]
@@ -23,23 +25,25 @@
   (let [week-ids   (map #(clojure.string/replace % #"\.zip$" "") (keys (archive-links)))
         on-fs?     (fn [wkid] (some #(re-seq (re-pattern wkid) %) (patent-application-files)))
         not-on-fs  (select-keys (archive-links) (map #(str % ".zip") (remove on-fs? week-ids)))]
-    not-on-fs))
+    (sort-by
+      #(apply str (re-seq #"\d{8}" (key %)))
+      not-on-fs)))
 
+;; (map copy-uri-to-file (take 10 (not-downloaded)))
 (defn copy-uri-to-file [[file uri]]
   (with-open [in (clojure.java.io/input-stream uri)
               out (clojure.java.io/output-stream (str "resources/applications/" file))]
-    (clojure.java.io/copy in out)))
+    (do
+      (clojure.java.io/copy in out)
+      (r/send-event c {:ttl 300 :service "patalyze.retrieval"
+                       :tag "downloaded" :description file
+                       :state "ok"}))))
 
 (defn find-xml [zipfile]
   (first
     (filter
       #(re-seq #"\.xml" (.getName %))
       (enumeration-seq (.entries zipfile)))))
-
-(defn read-and-split-from-zipped-xml [file-name]
-  (with-open [zip (java.util.zip.ZipFile. file-name)
-              xml (.getInputStream zip (find-xml zip))]
-    (split-file xml)))
 
 (defn split-file [readable]
   "Splits archive file into strings at xml statements"
@@ -49,5 +53,10 @@
         patents-xml (map #(apply str (concat (first %) (second %))) segments)]
     patents-xml))
 
+(defn read-and-split-from-zipped-xml [file-name]
+  (with-open [zip (java.util.zip.ZipFile. file-name)
+              xml (.getInputStream zip (find-xml zip))]
+    (split-file xml)))
+
 ;; (clojure.java.io/reader (get-xml-file-contents "resources/applications/ipab20130110_wk02.zip"))
-(count (read-and-split-from-zipped-xml (first (patent-application-files))))
+;; (count (read-and-split-from-zipped-xml (first (patent-application-files))))
