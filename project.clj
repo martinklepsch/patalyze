@@ -8,6 +8,7 @@
                  [org.clojure/data.zip "0.1.1"]
                  [org.clojure/core.match "0.2.1"]
                  [prismatic/schema "0.2.1"]
+                 [riemann-clojure-client "0.2.10"]
                  [enlive "1.1.5"]
                  [clojurewerkz/elastisch "2.0.0-beta4"]]
   :plugins      [[lein-kibit "0.0.8"]])
