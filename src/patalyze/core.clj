@@ -1,9 +1,6 @@
 (ns patalyze.core
   (:require [patalyze.retrieval   :as retrieval]
-            [clojure.xml          :as xml]
-            [clojure.zip          :as zip]
-            [clojure.data.zip     :as dzip]
-            [clojure.data.zip.xml :as zf]
+            [riemann.client       :as r]
             [net.cgrand.enlive-html       :as html]
             [clojure.core.match   :refer (match)]
             [schema.core          :as s]
@@ -13,6 +10,8 @@
             [clojurewerkz.elastisch.rest.document :as esd]
             [clojurewerkz.elastisch.rest.bulk     :as esb]
             [clojurewerkz.elastisch.rest.response :as esresp]))
+
+(def c (r/tcp-client {:host "127.0.0.1"}))
 
 (defn union-re-patterns [& patterns]
   (re-pattern (apply str (interpose "|" (map #(str "(?:" % ")") patterns)))))
@@ -118,21 +117,26 @@
      :else :not-recognized))
 
 (defn patentxml->map [xml-str]
-;;   (try
+  (try
     (let [version      (detect-version xml-str)
-          xml-resource (parse xml-str)]
-      {:organization (orgname version xml-resource)
-       :inventors    (inventors version xml-resource)
-       :abstract     (invention-abstract version xml-resource)
-       :title        (invention-title version xml-resource)
-       :uid          (publication-identifier version xml-resource)
-       :plain-data   xml-str}))
-;;   (catch org.xml.sax.SAXParseException e {:error-msg (.getMessage e)
-;;                                           :xml-str   xml-str})))
+          xml-resource (parse xml-str)
+          parsed {:organization (orgname version xml-resource)
+                  :inventors    (inventors version xml-resource)
+                  :abstract     (invention-abstract version xml-resource)
+                  :title        (invention-title version xml-resource)
+                  :uid          (publication-identifier version xml-resource)
+                  :plain-data   xml-str}]
+      (do
+        (r/send-event c {:ttl 20 :service "patalyze.parse"
+                         :description (:uid parsed) :state "ok"})
+        parsed))
+  (catch org.xml.sax.SAXParseException e
+     (r/send-event c {:ttl 20 :service "patalyze.parse"
+                      :description xml-str :state "error"}))))
 
 (defn read-file [xml-archive]
   "Reads one weeks patent archive and returns a seq of maps w/ results"
-  (map patentxml->map (retrieval/split-file xml-archive)))
+  (map patentxml->map (retrieval/read-and-split-from-zipped-xml xml-archive)))
 
 (def PatentApplication
   {:uid s/Str
