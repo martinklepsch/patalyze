@@ -13,8 +13,6 @@
 
 (def c (r/tcp-client {:host "127.0.0.1"}))
 (defmacro wcar* [& body] `(car/wcar nil ~@body))
-;; (wcar* (car/sadd :unparsed-archives "foo" "asd"))
-;; (wcar* (car/spop :unparsed-archives))
 
 (defn version-samples []
   "Find all xmls in the resources/patent_archives/ directory"
@@ -27,13 +25,18 @@
   (let [zipped (into {} (for [[k v] (version-samples)] [k (parse v)]))]
     (into {} (for [[k v] zipped] [k (f k v)]))))
 
-(defn get-file-to-parse []
-  (let [dir "resources/applications/"]
-    (str dir (wcar* (car/spop :unparsed-archives)))))
+(defn unparsed-files []
+  (let [parsed (wcar* (car/smembers :parsed-archives))
+        files  (retrieval/patent-application-files)]
+    (remove (set parsed) files)))
+
 
 (defn read-file [xml-archive]
   "Reads one weeks patent archive and returns a seq of maps w/ results"
-  (map parser/patentxml->map (retrieval/read-and-split-from-zipped-xml xml-archive)))
+  (do
+    (wcar* (car/sadd :parsed-archives xml-archive))
+    (map parser/patentxml->map
+         (retrieval/read-and-split-from-zipped-xml xml-archive))))
 
 (def PatentApplication
   {:uid s/Str

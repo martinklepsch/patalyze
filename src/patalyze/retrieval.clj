@@ -9,8 +9,6 @@
 (def ^:dynamic *applications-biblio-url*
   "http://www.google.com/googlebooks/uspto-patents-applications-biblio.html")
 
-;; (wcar* (car/spop :unparsed-archives))
-
 (defn fetch-url [url]
   (html/html-resource (java.net.URL. url)))
 
@@ -35,13 +33,11 @@
       #(apply str (re-seq #"\d{8}" (key %)))
       not-on-fs)))
 
-(map copy-uri-to-file (take 2 (not-downloaded)))
 (defn copy-uri-to-file [[file uri]]
   (with-open [in (clojure.java.io/input-stream uri)
               out (clojure.java.io/output-stream (str "resources/applications/" file))]
     (do
       (clojure.java.io/copy in out)
-      (wcar* (car/sadd :unparsed-archives file))
       (r/send-event c {:ttl 300 :service "patalyze.retrieval"
                        :tag "downloaded" :description file
                        :state "ok"}))))
