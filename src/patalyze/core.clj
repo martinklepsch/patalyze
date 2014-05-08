@@ -22,7 +22,7 @@
             (map slurp (filter #(re-seq #".*\.xml" %) (map str files))))))
 
 (defn test-parse-fn [f]
-  (let [zipped (into {} (for [[k v] (version-samples)] [k (parse v)]))]
+  (let [zipped (into {} (for [[k v] (version-samples)] [k (parser/parse v)]))]
     (into {} (for [[k v] zipped] [k (f k v)]))))
 
 (defn unparsed-files []
