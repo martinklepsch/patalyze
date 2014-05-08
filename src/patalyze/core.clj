@@ -52,6 +52,15 @@
 ;; using analyzer :analyzer "whitespace" we can search for parts of the inventors name
 ;; with :index "not_analyzed"
 
+(defn index-file [f]
+  (bulk-insert (prepare-bulk-op (read-file f))))
+
+(defn connect-elasticsearch []
+  (esr/connect! "http://127.0.0.1:9200"))
+
+(defn create-elasticsearch-mapping []
+  (esi/create "patalyze_development" :mappings cmapping))
+
 ;; BULK INSERTION
 (defn prepare-bulk-op [patents]
   (esb/bulk-index
@@ -63,11 +72,7 @@
   (map #(esb/bulk (prepare-bulk-op %) :refresh true)
        (partition-all 2000 patents)))
 
-(defn index-file [f]
-  (bulk-insert (prepare-bulk-op (read-file f))))
-
 (comment
-  (esr/connect! "http://127.0.0.1:9200")
   (esd/delete-by-query-across-all-indexes-and-types (q/match-all))
   ;; creates an index with default settings and no custom mapping types
   (time (index-file (nth (patent-application-files) 4)))
@@ -75,7 +80,6 @@
 
   (esd/count "patalyze_development" "patent" (q/match-all))
   (esi/delete "patalyze_development")
-  (esi/create "patalyze_development" :mappings cmapping)
   (esi/update-mapping "patalyze_development" "patent" :mapping cmapping)
   (esi/refresh "patalyze_development")
 
