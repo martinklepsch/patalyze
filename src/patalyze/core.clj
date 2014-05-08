@@ -33,10 +33,8 @@
 
 (defn read-file [xml-archive]
   "Reads one weeks patent archive and returns a seq of maps w/ results"
-  (do
-    (wcar* (car/sadd :parsed-archives xml-archive))
-    (map parser/patentxml->map
-         (retrieval/read-and-split-from-zipped-xml xml-archive))))
+  (map parser/patentxml->map
+       (retrieval/read-and-split-from-zipped-xml xml-archive)))
 
 (def PatentApplication
   {:uid s/Str
@@ -55,15 +53,6 @@
 ;; using analyzer :analyzer "whitespace" we can search for parts of the inventors name
 ;; with :index "not_analyzed"
 
-(defn index-file [f]
-  (bulk-insert (prepare-bulk-op (read-file f))))
-
-(defn connect-elasticsearch []
-  (esr/connect! "http://127.0.0.1:9200"))
-
-(defn create-elasticsearch-mapping []
-  (esi/create "patalyze_development" :mappings cmapping))
-
 ;; BULK INSERTION
 (defn prepare-bulk-op [patents]
   (esb/bulk-index
@@ -74,6 +63,21 @@
 (defn bulk-insert [patents]
   (map #(esb/bulk (prepare-bulk-op %) :refresh true)
        (partition-all 2000 patents)))
+
+;; INDEX WITH ELASTISCH
+(defn index-file [f]
+  (do
+    (wcar* (car/sadd :parsed-archives f))
+    (bulk-insert (prepare-bulk-op (read-file f)))))
+
+(defn connect-elasticsearch []
+  (esr/connect! "http://127.0.0.1:9200"))
+
+(defn create-elasticsearch-mapping []
+  (esi/create "patalyze_development" :mappings cmapping))
+
+(defn patent-count []
+  (esd/count "patalyze_development" "patent" (q/match-all)))
 
 (comment
   (esd/delete-by-query-across-all-indexes-and-types (q/match-all))
