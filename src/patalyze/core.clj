@@ -4,6 +4,7 @@
             [riemann.client       :as r]
             [schema.core          :as s]
             [taoensso.carmine :as car :refer (wcar)]
+            [taoensso.carmine.message-queue :as car-mq]
             [clojurewerkz.elastisch.rest          :as esr]
             [clojurewerkz.elastisch.rest.index    :as esi]
             [clojurewerkz.elastisch.query         :as q]
@@ -67,8 +68,8 @@
 ;; INDEX WITH ELASTISCH
 (defn index-file [f]
   (do
-    (wcar* (car/sadd :parsed-archives f))
-    (bulk-insert (prepare-bulk-op (read-file f)))))
+    (bulk-insert (prepare-bulk-op (read-file f)))
+    (wcar* (car/sadd :parsed-archives f))))
 
 (defn connect-elasticsearch []
   (esr/connect! "http://127.0.0.1:9200"))
@@ -78,6 +79,17 @@
 
 (defn patent-count []
   (esd/count "patalyze_development" "patent" (q/match-all)))
+
+; BACKGROUND PROCESSING
+(def my-worker
+  (car-mq/worker nil "index-queue"
+     {:handler (fn [{:keys [message attempt]}]
+                 (println "Indexing " message)
+                 (index-file message)
+                 {:status :success})}))
+
+(defn queue-archive [f]
+  (wcar* (car-mq/enqueue "index-queue" f)))
 
 (comment
   (esd/delete-by-query-across-all-indexes-and-types (q/match-all))
