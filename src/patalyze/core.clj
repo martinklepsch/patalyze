@@ -55,20 +55,38 @@
 ;; with :index "not_analyzed"
 
 ;; BULK INSERTION
+(def ^:private special-operation-keys
+  [:_index :_type :_id :_routing :_percolate :_parent :_timestamp :_ttl])
+
+(defn upsert-operation [doc]
+  {"update" (select-keys doc special-operation-keys)})
+
+(defn upsert-document [doc]
+  {:doc (dissoc doc :_index :_type)
+   :doc_as_upsert true})
+
+(defn bulk-upsert
+  "generates the content for a bulk insert operation"
+  ([documents]
+     (let [operations (map upsert-operation documents)
+           documents  (map upsert-doc documents)]
+       (interleave operations documents))))
+
 (defn prepare-bulk-op [patents]
-  (esb/bulk-index
+  (bulk-upsert
     (map #(assoc % :_index "patalyze_development"
                    :_type "patent"
                    :_id (:uid %)) patents)))
 
-(defn bulk-insert [patents]
-  (map #(esb/bulk (prepare-bulk-op %) :refresh true)
-       (partition-all 2000 patents)))
+(defn partitioned-bulk-op [patents]
+  (dorun
+    (map #(esb/bulk (prepare-bulk-op %) :refresh true)
+         (partition-all 1000 patents))))
 
 ;; INDEX WITH ELASTISCH
 (defn index-file [f]
   (do
-    (bulk-insert (prepare-bulk-op (read-file f)))
+    (partitioned-bulk-op (read-file f))
     (wcar* (car/sadd :parsed-archives f))))
 
 (defn connect-elasticsearch []
@@ -84,7 +102,6 @@
 (def my-worker
   (car-mq/worker nil "index-queue"
      {:handler (fn [{:keys [message attempt]}]
-                 (println "Indexing " message)
                  (index-file message)
                  {:status :success})}))
 
