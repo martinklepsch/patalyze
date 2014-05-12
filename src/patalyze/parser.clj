@@ -99,19 +99,14 @@
      :else :not-recognized))
 
 (defn patentxml->map [xml-str]
-  (try
-    (let [version      (detect-version xml-str)
-          xml-resource (parse xml-str)
-          parsed {:organization (orgname version xml-resource)
-                  :inventors    (inventors version xml-resource)
-                  :abstract     (invention-abstract version xml-resource)
-                  :title        (invention-title version xml-resource)
-                  :uid          (publication-identifier version xml-resource)
-                  :plain-data   xml-str}]
-      (do
-        (r/send-event c {:ttl 20 :service "patalyze.parse"
-                         :description (:uid parsed) :state "ok"})
-        parsed))
-  (catch org.xml.sax.SAXParseException e
-     (r/send-event c {:ttl 20 :service "patalyze.parse"
-                      :description xml-str :state "error"}))))
+  (let [version      (detect-version xml-str)
+        xml-resource (parse xml-str)
+        parsed {:organization (orgname version xml-resource)
+                :inventors    (inventors version xml-resource)
+                :abstract     (invention-abstract version xml-resource)
+                :title        (invention-title version xml-resource)
+                :uid          (publication-identifier version xml-resource)}]
+    (do
+      (r/send-event c {:ttl 20 :service "patalyze.parse"
+                       :description (:uid parsed) :state "ok"})
+      parsed)))
