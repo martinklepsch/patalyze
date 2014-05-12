@@ -23,7 +23,7 @@
   (let [directory (clojure.java.io/file "resources/applications/")
         files (file-seq directory)]
      (sort-by
-       #(apply str (re-seq #"\d{8}" %))
+       #(apply str (re-seq #"\d{6}" %))
         (filter #(re-seq #"\.zip" %) (map str files)))))
 
 (defn not-downloaded []
@@ -31,7 +31,7 @@
         on-fs?     (fn [wkid] (some #(re-seq (re-pattern wkid) %) (patent-application-files)))
         not-on-fs  (select-keys (archive-links) (map #(str % ".zip") (remove on-fs? week-ids)))]
     (sort-by
-      #(apply str (re-seq #"\d{8}" (key %)))
+      #(apply str (re-seq #"\d{6}" (key %)))
       not-on-fs)))
 
 (defn copy-uri-to-file [[file uri]]
