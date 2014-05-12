@@ -105,10 +105,26 @@
                  (index-file message)
                  {:status :success})}))
 
-(defn queue-archive [f]
-  (wcar* (car-mq/enqueue "index-queue" f)))
+(defn queue-archive [& files]
+  (doseq [f files]
+    (wcar* (car-mq/enqueue "index-queue" f))))
+
+(defn count-patents-in-archives []
+  (reduce + (map #(count (retrieval/read-and-split-from-zipped-xml %))
+                 (retrieval/patent-application-files))))
 
 (comment
+  (connect-elasticsearch)
+
+  (car-mq/queue-status nil "index-queue")
+  ;; (car-mq/stop my-worker)
+  ;; (wcar* (car-mq/message-status "index-queue" "4eb33ed8-a6cb-4930-8ad8-0492724dc4f5"))
+  ;; (retrieval/patent-application-files)
+  (apply queue-archive (retrieval/patent-application-files))
+  (patent-count)
+  (esd/delete-by-query-across-all-indexes-and-types (q/match-all))
+  (esd/search "patalyze_development" "patent" :query (q/match-all))
+
   (esd/delete-by-query-across-all-indexes-and-types (q/match-all))
   ;; creates an index with default settings and no custom mapping types
   (time (index-file (nth (patent-application-files) 4)))
