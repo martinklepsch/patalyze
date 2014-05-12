@@ -4,7 +4,7 @@
             [riemann.client       :as r]
             [schema.core          :as s]
             [taoensso.carmine :as car :refer (wcar)]
-            [taoensso.carmine.message-queue :as car-mq]
+            [taoensso.carmine.message-queue       :as car-mq]
             [clojurewerkz.elastisch.rest          :as esr]
             [clojurewerkz.elastisch.rest.index    :as esi]
             [clojurewerkz.elastisch.query         :as q]
@@ -102,13 +102,13 @@
   (esd/delete-by-query-across-all-indexes-and-types (q/match-all)))
 
 ; BACKGROUND PROCESSING
-(def my-worker
+(def index-worker
   (car-mq/worker nil "index-queue"
      {:handler (fn [{:keys [message attempt]}]
                  (index-file message)
                  {:status :success})
 
-      :nthreads 2}))
+      :nthreads 3}))
 
 (defn queue-archive [& files]
   (doseq [f files]
@@ -125,9 +125,11 @@
   (connect-elasticsearch)
 
   (car-mq/queue-status nil "index-queue")
-  ;; (car-mq/stop my-worker)
-  ;; (wcar* (car-mq/message-status "index-queue" "4eb33ed8-a6cb-4930-8ad8-0492724dc4f5"))
-  ;; (retrieval/patent-application-files)
+  (car-mq/stop p/index-worker)
+  (car-mq/start p/index-worker)
+  (car-mq/clear-queues nil "index-queue")
+  (wcar* (car-mq/message-status "index-queue" "4eb33ed8-a6cb-4930-8ad8-0492724dc4f5"))
+  (retrieval/patent-application-files)
   (apply queue-archive (retrieval/patent-application-files))
   (patent-count)
   (esd/delete-by-query-across-all-indexes-and-types (q/match-all))
