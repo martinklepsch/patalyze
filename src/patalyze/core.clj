@@ -114,6 +114,9 @@
   (doseq [f files]
     (wcar* (car-mq/enqueue "index-queue" f))))
 
+(defn clear-queue []
+  (wcar* (car-mq/clear-queues "index-queue")))
+
 (defn count-patents-in-archives []
   (reduce + (map #(count (retrieval/read-and-split-from-zipped-xml %))
                  (retrieval/patent-application-files))))
