@@ -106,7 +106,9 @@
   (car-mq/worker nil "index-queue"
      {:handler (fn [{:keys [message attempt]}]
                  (index-file message)
-                 {:status :success})}))
+                 {:status :success})
+
+      :nthreads 4}))
 
 (defn queue-archive [& files]
   (doseq [f files]
