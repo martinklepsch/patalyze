@@ -98,6 +98,9 @@
 (defn patent-count []
   (esd/count "patalyze_development" "patent" (q/match-all)))
 
+(defn clear-patents []
+  (esd/delete-by-query-across-all-indexes-and-types (q/match-all)))
+
 ; BACKGROUND PROCESSING
 (def my-worker
   (car-mq/worker nil "index-queue"
