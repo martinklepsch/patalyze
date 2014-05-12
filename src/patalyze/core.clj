@@ -69,7 +69,7 @@
   "generates the content for a bulk insert operation"
   ([documents]
      (let [operations (map upsert-operation documents)
-           documents  (map upsert-doc documents)]
+           documents  (map upsert-document  documents)]
        (interleave operations documents))))
 
 (defn prepare-bulk-op [patents]
