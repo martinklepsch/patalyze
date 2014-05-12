@@ -108,7 +108,7 @@
                  (index-file message)
                  {:status :success})
 
-      :nthreads 4}))
+      :nthreads 2}))
 
 (defn queue-archive [& files]
   (doseq [f files]
