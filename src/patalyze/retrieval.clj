@@ -1,7 +1,8 @@
 (ns patalyze.retrieval
   (:require [riemann.client :as r]
             [taoensso.carmine :as car :refer (wcar)]
-            [net.cgrand.enlive-html :as html]))
+            [net.cgrand.enlive-html :as html])
+  (:import [java.util.zip ZipFile]))
 
 (def c (r/tcp-client {:host "127.0.0.1"}))
 (defmacro wcar* [& body] `(car/wcar nil ~@body))
@@ -57,7 +58,7 @@
     patents-xml))
 
 (defn read-and-split-from-zipped-xml [file-name]
-  (with-open [zip (java.util.zip.ZipFile. file-name)
+  (with-open [zip (ZipFile. file-name)
               xml (.getInputStream zip (find-xml zip))]
     (split-file xml)))
 
