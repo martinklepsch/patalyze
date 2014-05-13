@@ -105,14 +105,16 @@
 (def index-worker
   (car-mq/worker nil "index-queue"
      {:handler (fn [{:keys [message attempt]}]
-                 (index-file message)
+                 (doseq [f message]
+                   (index-file f))
                  {:status :success})
 
-      :nthreads 3}))
+      :nthreads 6}))
 
-(defn queue-archive [& files]
-  (doseq [f files]
-    (wcar* (car-mq/enqueue "index-queue" f))))
+(defn queue-archives [files]
+  (wcar* (car-mq/enqueue "index-queue" files)))
+
+;; (queue-archives (first (partition-all 20 (retrieval/patent-application-files))))
 
 (defn clear-queue []
   (wcar* (car-mq/clear-queues "index-queue")))
