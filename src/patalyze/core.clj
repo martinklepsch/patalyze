@@ -3,19 +3,21 @@
             [patalyze.parser      :as parser]
             [riemann.client       :as r]
             [schema.core          :as s]
-            [taoensso.timbre                      :as timbre]
             [clojurewerkz.elastisch.rest          :as esr]
             [clojurewerkz.elastisch.rest.index    :as esi]
             [clojurewerkz.elastisch.query         :as q]
             [clojurewerkz.elastisch.rest.document :as esd]
             [clojurewerkz.elastisch.rest.bulk     :as esb]
-            [clojurewerkz.elastisch.rest.response :as esresp]))
-
-(timbre/refer-timbre)
-(timbre/set-config! [:appenders :spit :enabled?] true)
-(timbre/set-config! [:shared-appender-config :spit-filename] "patalyze.log")
+            [clojurewerkz.elastisch.rest.response :as esresp])
+  (:import (java.util.concurrent TimeUnit Executors)))
 
 (def c (r/tcp-client {:host "127.0.0.1"}))
+
+(def patent-count-notifier
+  (.scheduleAtFixedRate (Executors/newScheduledThreadPool 1)
+    #(r/send-event c {:ttl 20 :service "patalyze.index/document-count"
+                      :state "ok" :metric (:count (esd/count "patalyze_development" "patent" (q/match-all)))})
+    0 10 TimeUnit/SECONDS))
 
 (defn version-samples []
   "Find all xmls in the resources/patent_archives/ directory"
@@ -33,7 +35,7 @@
 ;;         files  (retrieval/patent-application-files)]
 ;;     (remove (set parsed) files)))
 
-(defnp read-file [xml-archive]
+(defn read-file [xml-archive]
   "Reads one weeks patent archive and returns a seq of maps w/ results"
   (map parser/patentxml->map
        (retrieval/read-and-split-from-zipped-xml xml-archive)))
@@ -88,16 +90,17 @@
                    :_id (:uid %)) patents)))
 
 (defn partitioned-bulk-op [patents]
-  ;; should really not refer all timbre stuff
-  (doseq [pat (partition-all 1000 patents)
-          _ (p :bulk-op (esb/bulk (prepare-bulk-op pat) :refresh true))]
-    nil))
-;;     (map #(esb/bulk (prepare-bulk-op %) :refresh true)
-;;          (partition-all 1000 patents))))
+  (doseq [pat (partition-all 1000 patents)]
+    (let [res (esb/bulk (prepare-bulk-op pat))]
+      (r/send-event c {:ttl 20 :service "patalyze.bulk"
+                       :metric (:took res) :state (if (:errors res) "error" "ok")}))))
 
 ;; INDEX WITH ELASTISCH
 (defn index-file [f]
   (partitioned-bulk-op (read-file f)))
+
+;; (def some-patents
+;;   (read-file (first (retrieval/patent-application-files))))
 
 (defn connect-elasticsearch []
   (esr/connect! "http://127.0.0.1:9200"))
@@ -111,9 +114,17 @@
 (defn clear-patents []
   (esd/delete-by-query-across-all-indexes-and-types (q/match-all)))
 
-;; (read-file! (first (retrieval/patent-application-files)))
+;; (partitioned-bulk-op (flatten (pmap #(map read-file %) (partition-all 70 (retrieval/patent-application-files)))))
+;; (def ps
+;;   (read-file (first (retrieval/patent-application-files))))
+
+;; (partitioned-bulk-op ps)
+;; (esb/bulk (prepare-bulk-op (take 1000 (read-file (first (retrieval/patent-application-files))))) :refresh true)
+;; (if (:errors (esb/bulk (prepare-bulk-op (take 1000 (read-file (first (retrieval/patent-application-files))))) :refresh true))
+;;   "error"
+;;   "ok")
 ; BACKGROUND PROCESSING
-;; (pmap #(doseq [f %] (read-file f)) (partition-all 70 (retrieval/patent-application-files)))
+;; (partitioned-bulk-op (flatten (pmap #(map read-file %) (partition-all 70 (retrieval/patent-application-files)))))
 ;; (count (partition-all 30 (retrieval/patent-application-files)))
 
 ;; (def index-worker
@@ -137,8 +148,10 @@
   (reduce + (map #(count (retrieval/read-and-split-from-zipped-xml %))
                  (retrieval/patent-application-files))))
 
+
 (comment
   (connect-elasticsearch)
+  (:count (esd/count "patalyze_development" "patent" (q/match-all)))
 
   (car-mq/queue-status nil "index-queue")
   (car-mq/stop p/index-worker)
