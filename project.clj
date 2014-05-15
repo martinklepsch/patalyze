@@ -8,6 +8,7 @@
                  [org.clojure/core.match "0.2.1"]
                  [prismatic/schema "0.2.1"]
                  [com.taoensso/carmine "2.6.2"]
+                 [com.taoensso/timbre "3.2.1"]
                  [riemann-clojure-client "0.2.10"]
                  [org.clojure/tools.nrepl "0.2.3"]
                  [enlive "1.1.5"]

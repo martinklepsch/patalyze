@@ -3,8 +3,7 @@
             [patalyze.parser      :as parser]
             [riemann.client       :as r]
             [schema.core          :as s]
-            [taoensso.carmine :as car :refer (wcar)]
-            [taoensso.carmine.message-queue       :as car-mq]
+            [taoensso.timbre                      :as timbre]
             [clojurewerkz.elastisch.rest          :as esr]
             [clojurewerkz.elastisch.rest.index    :as esi]
             [clojurewerkz.elastisch.query         :as q]
@@ -12,8 +11,11 @@
             [clojurewerkz.elastisch.rest.bulk     :as esb]
             [clojurewerkz.elastisch.rest.response :as esresp]))
 
+(timbre/refer-timbre)
+(timbre/set-config! [:appenders :spit :enabled?] true)
+(timbre/set-config! [:shared-appender-config :spit-filename] "patalyze.log")
+
 (def c (r/tcp-client {:host "127.0.0.1"}))
-(defmacro wcar* [& body] `(car/wcar nil ~@body))
 
 (defn version-samples []
   "Find all xmls in the resources/patent_archives/ directory"
@@ -26,13 +28,12 @@
   (let [zipped (into {} (for [[k v] (version-samples)] [k (parser/parse v)]))]
     (into {} (for [[k v] zipped] [k (f k v)]))))
 
-(defn unparsed-files []
-  (let [parsed (wcar* (car/smembers :parsed-archives))
-        files  (retrieval/patent-application-files)]
-    (remove (set parsed) files)))
+;; (defn unparsed-files []
+;;   (let [parsed (wcar* (car/smembers :parsed-archives))
+;;         files  (retrieval/patent-application-files)]
+;;     (remove (set parsed) files)))
 
-
-(defn read-file [xml-archive]
+(defnp read-file [xml-archive]
   "Reads one weeks patent archive and returns a seq of maps w/ results"
   (map parser/patentxml->map
        (retrieval/read-and-split-from-zipped-xml xml-archive)))
@@ -79,15 +80,16 @@
                    :_id (:uid %)) patents)))
 
 (defn partitioned-bulk-op [patents]
-  (dorun
-    (map #(esb/bulk (prepare-bulk-op %) :refresh true)
-         (partition-all 1000 patents))))
+  ;; should really not refer all timbre stuff
+  (doseq [pat (partition-all 1000 patents)
+          _ (p :bulk-op (esb/bulk (prepare-bulk-op pat) :refresh true))]
+    nil))
+;;     (map #(esb/bulk (prepare-bulk-op %) :refresh true)
+;;          (partition-all 1000 patents))))
 
 ;; INDEX WITH ELASTISCH
 (defn index-file [f]
-  (do
-    (partitioned-bulk-op (read-file f))
-    (wcar* (car/sadd :parsed-archives f))))
+  (partitioned-bulk-op (read-file f)))
 
 (defn connect-elasticsearch []
   (esr/connect! "http://127.0.0.1:9200"))
@@ -102,22 +104,25 @@
   (esd/delete-by-query-across-all-indexes-and-types (q/match-all)))
 
 ; BACKGROUND PROCESSING
-(def index-worker
-  (car-mq/worker nil "index-queue"
-     {:handler (fn [{:keys [message attempt]}]
-                 (doseq [f message]
-                   (index-file f))
-                 {:status :success})
+;; (pmap #(doseq [f %] (index-file f)) (partition-all 20 (retrieval/patent-application-files)))
+;; (count (partition-all 30 (retrieval/patent-application-files)))
 
-      :nthreads 6}))
+;; (def index-worker
+;;   (car-mq/worker nil "index-queue"
+;;      {:handler (fn [{:keys [message attempt]}]
+;;                  (doseq [f message]
+;;                    (index-file f))
+;;                  {:status :success})
 
-(defn queue-archives [files]
-  (wcar* (car-mq/enqueue "index-queue" files)))
+;;       :nthreads 2}))
 
-;; (queue-archives (first (partition-all 20 (retrieval/patent-application-files))))
+;; (defn queue-archives [files]
+;;   (wcar* (car-mq/enqueue "index-queue" files)))
 
-(defn clear-queue []
-  (wcar* (car-mq/clear-queues "index-queue")))
+;; (queue-archives (nth (partition-all 20 (retrieval/patent-application-files)) 0))
+
+;; (defn clear-queue []
+;;   (wcar* (car-mq/clear-queues "index-queue")))
 
 (defn count-patents-in-archives []
   (reduce + (map #(count (retrieval/read-and-split-from-zipped-xml %))

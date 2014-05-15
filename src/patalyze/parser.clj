@@ -1,7 +1,12 @@
 (ns patalyze.parser
   (:require [net.cgrand.enlive-html       :as html]
-            [riemann.client       :as r]
+            [riemann.client               :as r]
+            [taoensso.timbre              :as timbre]
             [clojure.core.match   :refer (match)]))
+
+(timbre/refer-timbre)
+(timbre/set-config! [:appenders :spit :enabled?] true)
+(timbre/set-config! [:shared-appender-config :spit-filename] "patalyze.log")
 
 (def c (r/tcp-client {:host "127.0.0.1"}))
 
@@ -19,7 +24,7 @@
                           dtd-matcher
                           #(str "resources/parsedir/" %1)))
 
-(defn parse [xml-str]
+(defnp parse [xml-str]
   "Reads a string and returns an xml zipper"
   (html/xml-resource
     (java.io.ByteArrayInputStream.
@@ -38,7 +43,7 @@
 
 
 ; TITLE
-(defn invention-title [version xml-resource]
+(defnp invention-title [version xml-resource]
   (let [path (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :technical-information :title-of-invention]
                                              :v40 [:us-bibliographic-data-application :invention-title]})
         title-tag (first (html/select xml-resource path))]
@@ -47,7 +52,7 @@
 ; DATES
 
 ; UNIQUE IDENTIFIER
-(defn publication-identifier [version xml-resource]
+(defnp publication-identifier [version xml-resource]
   (let [paths (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :> :document-id :*]
                                               :v40 [:us-bibliographic-data-application :publication-reference :document-id :*]})
         document-id (html/select xml-resource paths)
@@ -56,7 +61,7 @@
 
 
 ; ABSTRACT
-(defn invention-abstract [version xml-resource]
+(defnp invention-abstract [version xml-resource]
   (let [path (dispatch-version-path version {:v15 [:subdoc-abstract :paragraph]
                                              :v40 [:abstract]})
         abstract (first (html/select xml-resource path))]
@@ -70,7 +75,7 @@
         fields  (html/texts nodes)]
     (clojure.string/join " " fields)))
 
-(defn inventors [version xml-resource]
+(defnp inventors [version xml-resource]
   (let [path (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :inventors :> :*]
                                              :v40 [:us-bibliographic-data-application :parties :applicants :> :*]
                                              :v43 [:us-bibliographic-data-application :us-parties :inventors :> :*]})
@@ -80,7 +85,7 @@
 
 
 ; ASSIGNEE
-(defn orgname [version xml-resource]
+(defnp orgname [version xml-resource]
   (let [path    (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :correspondence-address :name-2]
                                                 :v40 [:us-bibliographic-data-application :parties :correspondence-address :addressbook :name]
                                                 :v41 [:us-bibliographic-data-application :assignees :orgname]})
@@ -88,7 +93,7 @@
    (html/text assignee)))
 
 ; PUTTING IT TOGETHER
-(defn detect-version [xml-str]
+(defnp detect-version [xml-str]
   (match [(apply str (re-seq dtd-matcher xml-str))]
      ["us-patent-application-v43-2012-12-04.dtd"] :v43
      ["us-patent-application-v42-2006-08-23.dtd"] :v42
