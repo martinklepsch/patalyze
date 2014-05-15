@@ -38,6 +38,14 @@
   (map parser/patentxml->map
        (retrieval/read-and-split-from-zipped-xml xml-archive)))
 
+;; it seems that the parsing is actually not the bottleneck and that elasticsearch
+;; is causing the trouble now. this fn should give me a realistic parsing-rate because it
+;; ignores the elasticsearch part
+(defn read-file! [f]
+  (doseq [p (read-file f)]
+    (r/send-event c {:ttl 20 :service "patalyze.parse"
+                     :description (:uid p) :state "ok"})))
+
 (def PatentApplication
   {:uid s/Str
    :title s/Str
@@ -103,8 +111,9 @@
 (defn clear-patents []
   (esd/delete-by-query-across-all-indexes-and-types (q/match-all)))
 
+;; (read-file! (first (retrieval/patent-application-files)))
 ; BACKGROUND PROCESSING
-;; (pmap #(doseq [f %] (index-file f)) (partition-all 20 (retrieval/patent-application-files)))
+;; (pmap #(doseq [f %] (read-file f)) (partition-all 70 (retrieval/patent-application-files)))
 ;; (count (partition-all 30 (retrieval/patent-application-files)))
 
 ;; (def index-worker
