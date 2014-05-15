@@ -12,6 +12,7 @@
   (:import (java.util.concurrent TimeUnit Executors)))
 
 (def c (r/tcp-client {:host "127.0.0.1"}))
+(def ^:dynamic *bulk-size* 1000)
 
 (def patent-count-notifier
   (.scheduleAtFixedRate (Executors/newScheduledThreadPool 1)
@@ -90,9 +91,10 @@
                    :_id (:uid %)) patents)))
 
 (defn partitioned-bulk-op [patents]
-  (doseq [pat (partition-all 1000 patents)]
+  (doseq [pat (partition-all *bulk-size* patents)]
     (let [res (esb/bulk (prepare-bulk-op pat))]
       (r/send-event c {:ttl 20 :service "patalyze.bulk"
+                       :description (str *bulk-size* "patents upserted")
                        :metric (:took res) :state (if (:errors res) "error" "ok")}))))
 
 ;; INDEX WITH ELASTISCH
