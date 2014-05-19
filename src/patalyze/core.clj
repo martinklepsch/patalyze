@@ -12,7 +12,7 @@
   (:import (java.util.concurrent TimeUnit Executors)))
 
 (def c (r/tcp-client {:host "127.0.0.1"}))
-(def ^:dynamic *bulk-size* 1000)
+(def ^:dynamic *bulk-size* 3000)
 
 (def patent-count-notifier
   (.scheduleAtFixedRate (Executors/newScheduledThreadPool 1)
@@ -98,8 +98,9 @@
                        :metric (:took res) :state (if (:errors res) "error" "ok")}))))
 
 ;; INDEX WITH ELASTISCH
-(defn index-file [f]
-  (partitioned-bulk-op (read-file f)))
+(defn index-files [files]
+  (partitioned-bulk-op
+    (flatten (map read-file files))))
 
 ;; (def some-patents
 ;;   (read-file (first (retrieval/patent-application-files))))
@@ -116,7 +117,8 @@
 (defn clear-patents []
   (esd/delete-by-query-across-all-indexes-and-types (q/match-all)))
 
-;; (partitioned-bulk-op (flatten (pmap #(map read-file %) (partition-all 70 (retrieval/patent-application-files)))))
+;; { "index" { "number_of_replicas" 0 } }
+;; (pmap index-files (partition-all 70 (retrieval/patent-application-files)))))
 ;; (def ps
 ;;   (read-file (first (retrieval/patent-application-files))))
 
