@@ -13,7 +13,6 @@
                  [enlive "1.1.5"]
                  [clojurewerkz/elastisch "2.0.0-beta4"]]
                  ; [lein-light-nrepl "0.0.17"]]
-  :plugins      [[lein-kibit "0.0.8"]]
 
   ; :repl-options {:nrepl-middleware [lighttable.nrepl.handler/lighttable-ops]}
 
