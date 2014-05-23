@@ -4,17 +4,21 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
-  :dependencies [[org.clojure/clojure "1.5.1"]
+  :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.match "0.2.1"]
                  [prismatic/schema "0.2.1"]
                  [com.taoensso/timbre "3.2.1"]
                  [riemann-clojure-client "0.2.10"]
                  [org.clojure/tools.nrepl "0.2.3"]
+                 [clojurewerkz/elastisch "2.0.0-rc1"]
                  [enlive "1.1.5"]
-                 [clojurewerkz/elastisch "2.0.0-beta4"]]
+                 [environ "0.5.0"]]
                  ; [lein-light-nrepl "0.0.17"]]
 
+  :plugins [[lein-environ "0.5.0"]]
   ; :repl-options {:nrepl-middleware [lighttable.nrepl.handler/lighttable-ops]}
+  :profiles {:dev {:env {:elasticsearch "http://127.0.0.1:9200"
+                         :riemann       "127.0.0.1"}}}
 
   :main patalyze.nrepl
   :uberjar-name "patalyze-standalone.jar")

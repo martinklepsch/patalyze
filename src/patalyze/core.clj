@@ -11,7 +11,9 @@
             [clojurewerkz.elastisch.rest.response :as esresp])
   (:import (java.util.concurrent TimeUnit Executors)))
 
-(def c (r/tcp-client {:host "127.0.0.1"}))
+(def c  (r/tcp-client {:host "127.0.0.1"}))
+(def es (esr/connect "http://127.0.0.1:9200"))
+
 (def ^:dynamic *bulk-size* 3000)
 
 (def patent-count-notifier
@@ -92,7 +94,7 @@
 
 (defn partitioned-bulk-op [patents]
   (doseq [pat (partition-all *bulk-size* patents)]
-    (let [res (esb/bulk (prepare-bulk-op pat))]
+    (let [res (esb/bulk es (prepare-bulk-op pat))]
       (r/send-event c {:ttl 20 :service "patalyze.bulk"
                        :description (str *bulk-size* "patents upserted")
                        :metric (:took res) :state (if (:errors res) "error" "ok")}))))
@@ -105,17 +107,14 @@
 ;; (def some-patents
 ;;   (read-file (first (retrieval/patent-application-files))))
 
-(defn connect-elasticsearch []
-  (esr/connect! "http://127.0.0.1:9200"))
-
 (defn create-elasticsearch-mapping []
-  (esi/create "patalyze_development" :mappings cmapping))
+  (esi/create es "patalyze_development" :mappings cmapping))
 
 (defn patent-count []
-  (esd/count "patalyze_development" "patent" (q/match-all)))
+  (esd/count es "patalyze_development" "patent" (q/match-all)))
 
 (defn clear-patents []
-  (esd/delete-by-query-across-all-indexes-and-types (q/match-all)))
+  (esd/delete-by-query-across-all-indexes-and-types es (q/match-all)))
 
 ;; { "index" { "number_of_replicas" 0 } }
 ;; (pmap index-files (partition-all 70 (retrieval/patent-application-files)))))
@@ -127,26 +126,6 @@
 ;; (if (:errors (esb/bulk (prepare-bulk-op (take 1000 (read-file (first (retrieval/patent-application-files))))) :refresh true))
 ;;   "error"
 ;;   "ok")
-; BACKGROUND PROCESSING
-;; (partitioned-bulk-op (flatten (pmap #(map read-file %) (partition-all 70 (retrieval/patent-application-files)))))
-;; (count (partition-all 30 (retrieval/patent-application-files)))
-
-;; (def index-worker
-;;   (car-mq/worker nil "index-queue"
-;;      {:handler (fn [{:keys [message attempt]}]
-;;                  (doseq [f message]
-;;                    (index-file f))
-;;                  {:status :success})
-
-;;       :nthreads 2}))
-
-;; (defn queue-archives [files]
-;;   (wcar* (car-mq/enqueue "index-queue" files)))
-
-;; (queue-archives (nth (partition-all 20 (retrieval/patent-application-files)) 0))
-
-;; (defn clear-queue []
-;;   (wcar* (car-mq/clear-queues "index-queue")))
 
 (defn count-patents-in-archives []
   (reduce + (map #(count (retrieval/read-and-split-from-zipped-xml %))
@@ -156,32 +135,21 @@
 (comment
   (connect-elasticsearch)
   (:count (esd/count "patalyze_development" "patent" (q/match-all)))
-
-  (car-mq/queue-status nil "index-queue")
-  (car-mq/stop p/index-worker)
-  (car-mq/start p/index-worker)
-  (car-mq/clear-queues nil "index-queue")
-  (wcar* (car-mq/message-status "index-queue" "4eb33ed8-a6cb-4930-8ad8-0492724dc4f5"))
   (retrieval/patent-application-files)
   (apply queue-archive (retrieval/patent-application-files))
   (patent-count)
   (esd/delete-by-query-across-all-indexes-and-types (q/match-all))
   (esd/search "patalyze_development" "patent" :query (q/match-all))
-
   (esd/delete-by-query-across-all-indexes-and-types (q/match-all))
   ;; creates an index with default settings and no custom mapping types
   (time (index-file (nth (patent-application-files) 4)))
   (esd/count "patalyze_development" "patent" (q/match-all))
-
   (esd/count "patalyze_development" "patent" (q/match-all))
   (esi/delete "patalyze_development")
   (esi/update-mapping "patalyze_development" "patent" :mapping cmapping)
   (esi/refresh "patalyze_development")
-
-
   (esd/search "patalyze_development" "patent" :query (q/term :inventors "Christopher D. Prest"))
   (esd/search "patalyze_development" "patent" :query {:term {:inventors "Daniel Francis Lowery"}})
   (esd/search "patalyze_development" "patent" :query (q/term :title "plastic"))
-
   (esd/search "patalyze_development" "patent" :query (q/term :inventors "Prest"))
   (esresp/total-hits (esd/search "patalyze_development" "patent" :query {:term {:title "plastic"}})))
