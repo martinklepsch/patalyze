@@ -1,14 +1,15 @@
 (ns patalyze.parser
   (:require [net.cgrand.enlive-html       :as html]
             [riemann.client               :as r]
+            [environ.core         :refer [env]]
             [taoensso.timbre              :as timbre]
             [clojure.core.match   :refer (match)]))
 
-(timbre/refer-timbre)
-(timbre/set-config! [:appenders :spit :enabled?] true)
-(timbre/set-config! [:shared-appender-config :spit-filename] "patalyze.log")
+;; (timbre/refer-timbre)
+;; (timbre/set-config! [:appenders :spit :enabled?] true)
+;; (timbre/set-config! [:shared-appender-config :spit-filename] "patalyze.log")
 
-(def c (r/tcp-client {:host "127.0.0.1"}))
+(def c (r/tcp-client {:host (env :hub)}))
 
 (defn union-re-patterns [& patterns]
   (re-pattern (apply str (interpose "|" (map #(str "(?:" % ")") patterns)))))
