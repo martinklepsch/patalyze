@@ -31,8 +31,10 @@
             (map slurp (filter #(re-seq #".*\.xml" %) (map str files))))))
 
 (defn test-parse-fn [f]
+  "use like this: (test-parse-fn parser/filing-date)"
   (let [zipped (into {} (for [[k v] (version-samples)] [k (parser/parse v)]))]
     (into {} (for [[k v] zipped] [k (f k v)]))))
+
 
 ;; (defn unparsed-files []
 ;;   (let [parsed (wcar* (car/smembers :parsed-archives))
@@ -120,16 +122,15 @@
 (defn clear-patents []
   (esd/delete-by-query-across-all-indexes-and-types es (q/match-all)))
 
+;; (esi/delete es "patalyze_development")
+;; (create-elasticsearch-mapping)
+;; (clear-patents)
+;; (patent-count)
+;; (index-files (take 6 (retrieval/patent-application-files)))
+(defn count-for-range [from to]
+  (esresp/total-hits (esd/search es "patalyze_development" "patent" :query (q/range :publication-date :from from :to to))))
 ;; { "index" { "number_of_replicas" 0 } }
 ;; (pmap index-files (partition-all 70 (retrieval/patent-application-files)))))
-;; (def ps
-;;   (read-file (first (retrieval/patent-application-files))))
-
-;; (partitioned-bulk-op ps)
-;; (esb/bulk (prepare-bulk-op (take 1000 (read-file (first (retrieval/patent-application-files))))) :refresh true)
-;; (if (:errors (esb/bulk (prepare-bulk-op (take 1000 (read-file (first (retrieval/patent-application-files))))) :refresh true))
-;;   "error"
-;;   "ok")
 
 (defn count-patents-in-archives []
   (reduce + (map #(count (retrieval/read-and-split-from-zipped-xml %))
@@ -149,7 +150,6 @@
   (time (index-file (nth (patent-application-files) 4)))
   (esd/count "patalyze_development" "patent" (q/match-all))
   (esd/count "patalyze_development" "patent" (q/match-all))
-  (esi/delete "patalyze_development")
   (esi/update-mapping "patalyze_development" "patent" :mapping cmapping)
   (esi/refresh "patalyze_development")
   (esd/search "patalyze_development" "patent" :query (q/term :inventors "Christopher D. Prest"))
