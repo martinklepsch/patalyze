@@ -60,5 +60,10 @@
               xml (.getInputStream zip (find-xml zip))]
     (split-file xml)))
 
+;; Simple fn to download one file for each year
+;; (let [files (filter (fn [[file-name uri]] (re-seq #"wk11" file-name))
+;;             (not-downloaded))]
+;;   (map copy-uri-to-file files))
+
 ;; (clojure.java.io/reader (get-xml-file-contents "resources/applications/ipab20130110_wk02.zip"))
 ;; (count (read-and-split-from-zipped-xml (first (patent-application-files))))
