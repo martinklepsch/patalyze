@@ -51,6 +51,17 @@
     (html/text title-tag)))
 
 ; DATES
+(defn filing-date [version xml-resource]
+  (let [path (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :domestic-filing-data :filing-date]
+                                             :v40 [:us-bibliographic-data-application :application-reference :date]})
+        title-tag (first (html/select xml-resource path))]
+    (html/text title-tag)))
+
+(defn publication-date [version xml-resource]
+  (let [path (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :document-id :document-date]
+                                             :v40 [:us-bibliographic-data-application :publication-reference :document-id :date]})
+        title-tag (first (html/select xml-resource path))]
+    (html/text title-tag)))
 
 ; UNIQUE IDENTIFIER
 (defnp publication-identifier [version xml-resource]
@@ -107,8 +118,10 @@
 (defn patentxml->map [xml-str]
   (let [version      (detect-version xml-str)
         xml-resource (parse xml-str)]
-    {:organization (orgname version xml-resource)
-     :inventors    (inventors version xml-resource)
-     :abstract     (invention-abstract version xml-resource)
-     :title        (invention-title version xml-resource)
-     :uid          (publication-identifier version xml-resource)}))
+    {:filing-date      (filing-date version xml-resource)
+     :publication-date (publication-date version xml-resource)
+     :organization     (orgname version xml-resource)
+     :inventors        (inventors version xml-resource)
+     :abstract         (invention-abstract version xml-resource)
+     :title            (invention-title version xml-resource)
+     :uid              (publication-identifier version xml-resource)}))
