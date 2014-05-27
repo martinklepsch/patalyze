@@ -52,23 +52,6 @@
     (r/send-event c {:ttl 20 :service "patalyze.parse"
                      :description (:uid p) :state "ok"})))
 
-(def PatentApplication
-  {:uid s/Str
-   :title s/Str
-   :abstract s/Str
-   :inventors  [(s/one s/Str "inventor")
-                s/Str]
-   :assignees [{:orgname s/Str
-               :role s/Str }]})
-
-; ELASTISCH
-(def cmapping
-  { "patent"
-    { :properties
-      { :inventors { :type "string" :index "not_analyzed" }}}})
-;; using analyzer :analyzer "whitespace" we can search for parts of the inventors name
-;; with :index "not_analyzed"
-
 ;; BULK INSERTION
 (def ^:private special-operation-keys
   [:_index :_type :_id :_routing :_percolate :_parent :_timestamp :_ttl])
@@ -99,6 +82,26 @@
       (r/send-event c {:ttl 20 :service "patalyze.bulk"
                        :description (str *bulk-size* "patents upserted")
                        :metric (:took res) :state (if (:errors res) "error" "ok")}))))
+
+(def PatentApplication
+  {:uid s/Str
+   :title s/Str
+   :abstract s/Str
+   :inventors  [(s/one s/Str "inventor")
+                s/Str]
+   :assignees [{:orgname s/Str
+               :role s/Str }]})
+
+; ELASTISCH
+(def cmapping
+  { "patent"
+    { :properties
+      { :inventors { :type "string" :index "not_analyzed" }
+        :publication-date { :type "date" }
+        :filing-date      { :type "date" }}}})
+
+;; using analyzer :analyzer "whitespace" we can search for parts of the inventors name
+;; with :index "not_analyzed"
 
 ;; INDEX WITH ELASTISCH
 (defn index-files [files]
