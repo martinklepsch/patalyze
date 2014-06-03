@@ -6,6 +6,11 @@
 
 (def c (r/tcp-client {:host (env :db-private)}))
 
+(let [data-dir (str (env :data-dir) "/applications")]
+  (if-not
+    (.exists (clojure.java.io/as-file data-dir))
+      (.mkdir (java.io.File. data-dir))))
+
 (def ^:dynamic *applications-biblio-url*
   "http://www.google.com/googlebooks/uspto-patents-applications-biblio.html")
 
