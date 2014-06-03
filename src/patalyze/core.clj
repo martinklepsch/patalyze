@@ -128,7 +128,8 @@
 ;; (patent-count)
 ;; (index-files (take 6 (retrieval/patent-application-files)))
 (defn count-for-range [from to]
-  (esresp/total-hits (esd/search es "patalyze_development" "patent" :query (q/range :publication-date :from from :to to))))
+  (esresp/total-hits (esd/search es "patalyze_development" "patent"
+                                 :query (q/range :publication-date :from from :to to))))
 ;; { "index" { "number_of_replicas" 0 } }
 ;; (pmap index-files (partition-all 70 (retrieval/patent-application-files)))))
 
