@@ -25,7 +25,7 @@
                           dtd-matcher
                           #(str "resources/parsedir/" %1)))
 
-(defnp parse [xml-str]
+(defn parse [xml-str]
   "Reads a string and returns an xml zipper"
   (html/xml-resource
     (java.io.ByteArrayInputStream.
@@ -44,7 +44,7 @@
 
 
 ; TITLE
-(defnp invention-title [version xml-resource]
+(defn invention-title [version xml-resource]
   (let [path (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :technical-information :title-of-invention]
                                              :v40 [:us-bibliographic-data-application :invention-title]})
         title-tag (first (html/select xml-resource path))]
@@ -64,7 +64,7 @@
     (html/text title-tag)))
 
 ; UNIQUE IDENTIFIER
-(defnp publication-identifier [version xml-resource]
+(defn publication-identifier [version xml-resource]
   (let [paths (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :> :document-id :*]
                                               :v40 [:us-bibliographic-data-application :publication-reference :document-id :*]})
         document-id (html/select xml-resource paths)
@@ -73,7 +73,7 @@
 
 
 ; ABSTRACT
-(defnp invention-abstract [version xml-resource]
+(defn invention-abstract [version xml-resource]
   (let [path (dispatch-version-path version {:v15 [:subdoc-abstract :paragraph]
                                              :v40 [:abstract]})
         abstract (first (html/select xml-resource path))]
@@ -87,7 +87,7 @@
         fields  (html/texts nodes)]
     (clojure.string/join " " fields)))
 
-(defnp inventors [version xml-resource]
+(defn inventors [version xml-resource]
   (let [path (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :inventors :> :*]
                                              :v40 [:us-bibliographic-data-application :parties :applicants :> :*]
                                              :v43 [:us-bibliographic-data-application :us-parties :inventors :> :*]})
@@ -97,7 +97,7 @@
 
 
 ; ASSIGNEE
-(defnp orgname [version xml-resource]
+(defn orgname [version xml-resource]
   (let [path    (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :correspondence-address :name-2]
                                                 :v40 [:us-bibliographic-data-application :parties :correspondence-address :addressbook :name]
                                                 :v41 [:us-bibliographic-data-application :assignees :orgname]})
@@ -105,7 +105,7 @@
    (html/text assignee)))
 
 ; PUTTING IT TOGETHER
-(defnp detect-version [xml-str]
+(defn detect-version [xml-str]
   (match [(apply str (re-seq dtd-matcher xml-str))]
      ["us-patent-application-v43-2012-12-04.dtd"] :v43
      ["us-patent-application-v42-2006-08-23.dtd"] :v42
