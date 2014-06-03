@@ -82,7 +82,7 @@
   (doseq [pat (partition-all *bulk-size* patents)]
     (let [res (esb/bulk es (prepare-bulk-op pat))]
       (r/send-event c {:ttl 20 :service "patalyze.bulk"
-                       :description (str *bulk-size* "patents upserted")
+                       :description (str (count pat) " patents upserted")
                        :metric (:took res) :state (if (:errors res) "error" "ok")}))))
 
 (def PatentApplication
