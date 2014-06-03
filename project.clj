@@ -17,7 +17,8 @@
 
   :plugins [[lein-environ "0.5.0"]]
   ; :repl-options {:nrepl-middleware [lighttable.nrepl.handler/lighttable-ops]}
-  :profiles {:dev {:env {:hub           "127.0.0.1"
+  :profiles {:dev {:env {:data-dir      "data"
+                         :db-private    "127.0.0.1"
                          :elasticsearch "http://127.0.0.1:9200"
                          :riemann       "127.0.0.1"}}}
 

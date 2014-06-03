@@ -12,8 +12,8 @@
             [clojurewerkz.elastisch.rest.response :as esresp])
   (:import (java.util.concurrent TimeUnit Executors)))
 
-(def c  (r/tcp-client {:host (env :hub)}))
-(def es (esr/connect (str "http://" (env :hub) ":9200")))
+(def c  (r/tcp-client {:host (env :db-private)}))
+(def es (esr/connect (str "http://" (env :db-private) ":9200")))
 
 (def ^:dynamic *bulk-size* 3000)
 

@@ -9,7 +9,7 @@
 ;; (timbre/set-config! [:appenders :spit :enabled?] true)
 ;; (timbre/set-config! [:shared-appender-config :spit-filename] "patalyze.log")
 
-(def c (r/tcp-client {:host (env :hub)}))
+(def c (r/tcp-client {:host (env :db-private)}))
 
 (defn union-re-patterns [& patterns]
   (re-pattern (apply str (interpose "|" (map #(str "(?:" % ")") patterns)))))
