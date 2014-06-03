@@ -20,7 +20,7 @@
 (def patent-count-notifier
   (.scheduleAtFixedRate (Executors/newScheduledThreadPool 1)
     #(r/send-event c {:ttl 20 :service "patalyze.index/document-count"
-                      :state "ok" :metric (:count (esd/count "patalyze_development" "patent" (q/match-all)))})
+                      :state "ok" :metric (:count (esd/count es "patalyze_development" "patent" (q/match-all)))})
     0 10 TimeUnit/SECONDS))
 
 (defn version-samples []
