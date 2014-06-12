@@ -35,12 +35,6 @@
   (let [zipped (into {} (for [[k v] (version-samples)] [k (parser/parse v)]))]
     (into {} (for [[k v] zipped] [k (f k v)]))))
 
-
-;; (defn unparsed-files []
-;;   (let [parsed (wcar* (car/smembers :parsed-archives))
-;;         files  (retrieval/patent-application-files)]
-;;     (remove (set parsed) files)))
-
 (defn read-file [xml-archive]
   "Reads one weeks patent archive and returns a seq of maps w/ results"
   (map parser/patentxml->map
