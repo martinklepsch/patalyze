@@ -7,6 +7,7 @@
             [clojurewerkz.elastisch.rest          :as esr]
             [clojurewerkz.elastisch.rest.index    :as esi]
             [clojurewerkz.elastisch.query         :as q]
+            [clojurewerkz.elastisch.aggregation   :as a]
             [clojurewerkz.elastisch.rest.document :as esd]
             [clojurewerkz.elastisch.rest.bulk     :as esb]
             [clojurewerkz.elastisch.rest.response :as esresp])
@@ -124,6 +125,51 @@
   (reduce + (map #(count (retrieval/read-and-split-from-zipped-xml %))
                  (retrieval/patent-application-files))))
 
+(defn merge-mapfile! [file map-to-merge]
+  (if (.exists (clojure.java.io/as-file file))
+    (spit file
+      (merge
+        (read-string (slurp file))
+        map-to-merge))
+    (spit file map-to-merge)))
+
+(defn update-archive-stats-file! []
+  (merge-mapfile! (str (env :data-dir) "/archive-stats.edn")
+    (into {}
+      (for [f (retrieval/patent-application-files)]
+         {(apply str (re-seq #"\d{8}" f)) (count (retrieval/read-and-split-from-zipped-xml f))}))))
+
+(defn archive-stats []
+  (let [stats-file (str (env :data-dir) "/archive-stats.edn")]
+    (if (.exists (clojure.java.io/as-file stats-file))
+      (read-string (slurp stats-file))
+      (do
+        (update-archive-stats-file!)
+        (archive-stats)))))
+
+(defn database-stats []
+  (let [agg (esd/search es "patalyze_development" "patent" { :query (q/match-all)
+                                                             :aggregations {:dates (a/terms "publication-date")}})
+        pub-dates (get-in agg [:aggregations :dates :buckets])]
+    (merge
+      (into {}
+        (for [f (retrieval/patent-application-files)]
+           {(apply str (re-seq #"\d{8}" f)) 0}))
+      (into {}
+        (for [p pub-dates]
+          {(apply str (re-seq #"\d{8}" (:key_as_string p))) (:doc_count p)})))))
+
+(defn index-integrity []
+  (let [stats (merge-with #(zipmap [:archive :database] %&) (archive-stats) (database-stats))]
+    (select-keys stats (for [[k v] stats  :when (not= (:database v) (:archive v))] k))))
+
+;; (esd/search es "patalyze_development" "patent" :aggs { :pub-dates { :terms { :field "publication-date" } } })
+
+;; Better way might be to build to maps like { "20010315" 15 "20010322" 47 ... }
+;; and weave this into one map that stores counts under special keys
+;; (esd/search es "patalyze_development" "patent"
+;;            { :query (q/match-all)
+;;              :aggregations {:dates (a/date-histogram "publication-date" "1w")}})
 
 (comment
   (connect-elasticsearch)
