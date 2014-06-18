@@ -149,7 +149,7 @@
 
 (defn database-stats []
   (let [agg (esd/search es "patalyze_development" "patent" { :query (q/match-all)
-                                                             :aggregations {:dates (a/terms "publication-date")}})
+                                                             :aggregations {:dates (a/terms "publication-date" {:size 0})}})
         pub-dates (get-in agg [:aggregations :dates :buckets])]
     (merge
       (into {}
