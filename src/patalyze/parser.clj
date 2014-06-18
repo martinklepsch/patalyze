@@ -78,7 +78,7 @@
   (let [paths   (dispatch-version-path version {:v15 [[:name :given-name] [:name :middle-name] [:name :family-name]]
                                                 :v40 [[:addressbook :first-name] [:addressbook :last-name]]})
         nodes   (map #(first (html/select inventor-node %)) paths)
-        fields  (html/texts nodes)]
+        fields  (remove clojure.string/blank? (html/texts nodes))]
     (clojure.string/join " " fields)))
 
 (defn inventors [version xml-resource]
