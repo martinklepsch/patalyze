@@ -142,19 +142,30 @@
         map-to-merge))
     (spit file map-to-merge)))
 
-(defn update-archive-stats-file! []
-  (merge-mapfile! (str (env :data-dir) "/archive-stats.edn")
-    (into {}
-      (for [f (retrieval/patent-application-files)]
-         {(apply str (re-seq #"\d{8}" f)) (count (retrieval/read-and-split-from-zipped-xml f))}))))
+(defn update-archive-stats-file! [archives]
+  (let [stats-file   (str (env :data-dir) "/archive-stats.edn")]
+    (merge-mapfile! stats-file
+      (into {}
+        (for [f archives]
+           {(apply str (re-seq #"\d{8}" f)) (count (retrieval/read-and-split-from-zipped-xml f))})))))
+
+;; (let [ks (keys (read-string (slurp (str (env :data-dir) "/archive-stats.edn"))))
+;;       fs (retrieval/patent-application-files)]
+;;   (remove #(some #{(apply str (re-seq #"\d{8}" %))} ks) fs))
 
 (defn archive-stats []
-  (let [stats-file (str (env :data-dir) "/archive-stats.edn")]
-    (if (.exists (clojure.java.io/as-file stats-file))
-      (read-string (slurp stats-file))
+  (let [stats-file (str (env :data-dir) "/archive-stats.edn")
+        on-disk    (retrieval/patent-application-files)]
+    (if (not (.exists (clojure.java.io/as-file stats-file)))
       (do
-        (update-archive-stats-file!)
-        (archive-stats)))))
+        (update-archive-stats-file! on-disk)
+        (archive-stats))
+      (do
+        (update-archive-stats-file!
+          (remove #(some #{(apply str (re-seq #"\d{8}" %))}
+                         (keys (read-string (slurp stats-file))))
+                  on-disk))
+        (read-string (slurp stats-file))))))
 
 (defn database-stats []
   (let [agg (esd/search es "patalyze_development" "patent" { :query (q/match-all)
