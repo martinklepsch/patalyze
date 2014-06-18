@@ -56,7 +56,8 @@
 (defn split-file [readable]
   "Splits archive file into strings at xml statements"
   (let [fseq (with-open [rdr (clojure.java.io/reader readable)] (reduce conj [] (line-seq rdr)))
-        xml-heads ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>" "<?xml version=\"1.0\"?>"]
+        xml-heads ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>" "<?xml version=\"1.0\"?>"
+                   "<?xml version=\"1.0\" encoding=\"UTF-8\"?><?xml-stylesheet href=\"specif.xsl\" type=\"text/xsl\"?>"]
         segments (partition 2 (partition-by #(some #{%} xml-heads) fseq))
         patents-xml (map #(apply str (concat (first %) (second %))) segments)]
     patents-xml))
