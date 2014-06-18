@@ -183,13 +183,8 @@
   (let [stats (merge-with #(zipmap [:archive :database] %&) (archive-stats) (database-stats))]
     (select-keys stats (for [[k v] stats  :when (not= (:database v) (:archive v))] k))))
 
-;; (esd/search es "patalyze_development" "patent" :aggs { :pub-dates { :terms { :field "publication-date" } } })
-
-;; Better way might be to build to maps like { "20010315" 15 "20010322" 47 ... }
-;; and weave this into one map that stores counts under special keys
-;; (esd/search es "patalyze_development" "patent"
-;;            { :query (q/match-all)
-;;              :aggregations {:dates (a/date-histogram "publication-date" "1w")}})
+;; These archives haven't been imported
+;; ("20040805" "20031211" "20040408" "20040115" "20031204" "20040610" "20040923" "20031120" "20040513" "20040909" "20041209" "20031009" "20041223" "20040527" "20050127" "20041118" "20040506" "20040624" "20031030" "20040108" "20040401" "20040122" "20040826" "20040304" "20041028" "20031225" "20041014" "20041202" "20040205" "20040520" "20041104" "20041007" "20040429" "20040219" "20031113" "20040415" "20040318" "20040212" "20040226" "20040422" "20040603" "20031106" "20040812" "20040708" "20040129" "20031016" "20040101" "20031023" "20030925" "20041216" "20031127" "20041021" "20041230" "20040916" "20041111" "20031218" "20040715" "20040617" "20040311" "20040819" "20031002" "20040325" "20040701" "20040722" "20041125" "20040729" "20040930" "20040902")
 
 (comment
   (connect-elasticsearch)
