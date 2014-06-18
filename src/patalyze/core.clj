@@ -4,6 +4,7 @@
             [riemann.client       :as r]
             [schema.core          :as s]
             [environ.core         :refer [env]]
+            [taoensso.timbre      :as timbre :refer (log  trace  debug  info  warn  error)]
             [clojurewerkz.elastisch.rest          :as esr]
             [clojurewerkz.elastisch.rest.index    :as esi]
             [clojurewerkz.elastisch.query         :as q]
@@ -15,6 +16,9 @@
 
 (def c  (r/tcp-client {:host (env :db-private)}))
 (def es (esr/connect (str "http://" (env :db-private) ":9200")))
+
+(timbre/set-config! [:appenders :spit :enabled?] true)
+(timbre/set-config! [:shared-appender-config :spit-filename] "patalyze.log")
 
 (def ^:dynamic *bulk-size* 3000)
 
@@ -38,8 +42,13 @@
 
 (defn read-file [xml-archive]
   "Reads one weeks patent archive and returns a seq of maps w/ results"
-  (map parser/patentxml->map
-       (retrieval/read-and-split-from-zipped-xml xml-archive)))
+  (let [snippets (retrieval/read-and-split-from-zipped-xml xml-archive)]
+    (map-indexed
+      #(try (parser/patentxml->map %2)
+        (catch Exception e
+          (error xml-archive "::" %1 "\n" e)
+          nil))
+      snippets)))
 
 ;; it seems that the parsing is actually not the bottleneck and that elasticsearch
 ;; is causing the trouble now. this fn should give me a realistic parsing-rate because it
