@@ -178,7 +178,7 @@
            {(apply str (re-seq #"\d{8}" f)) 0}))
       (into {}
         (for [p pub-dates]
-          {(apply str (re-seq #"\d{8}" (:key_as_string p))) (:doc_count p)})))))
+          {(apply str (re-seq #"\d{8}" (:key p))) (:doc_count p)})))))
 
 (defn index-integrity-stats []
   (merge-with #(zipmap [:archive :database] %&) (archive-stats) (database-stats)))
