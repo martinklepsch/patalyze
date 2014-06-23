@@ -151,7 +151,7 @@
 
 ;; (let [ks (keys (read-string (slurp (str (env :data-dir) "/archive-stats.edn"))))
 ;;       fs (retrieval/patent-application-files)]
-;;   (remove #(some #{(apply str (re-seq #"\d{8}" %))} ks) fs))
+;;   (filter #(some #{(apply str (re-seq #"\d{8}" %))} ks) fs))
 
 (defn archive-stats []
   (let [stats-file (str (env :data-dir) "/archive-stats.edn")
@@ -168,8 +168,9 @@
         (read-string (slurp stats-file))))))
 
 (defn database-stats []
-  (let [agg (esd/search es "patalyze_development" "patent" { :query (q/match-all)
-                                                             :aggregations {:dates (a/terms "publication-date" {:size 0})}})
+  (let [agg (esd/search es "patalyze_development" "patent"
+                        { :query (q/match-all)
+                          :aggregations {:dates (a/terms "publication-date" {:size 0})}})
         pub-dates (get-in agg [:aggregations :dates :buckets])]
     (merge
       (into {}
