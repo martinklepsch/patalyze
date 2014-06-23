@@ -18,7 +18,7 @@
 (def es (esr/connect (str "http://" (env :db-private) ":9200")))
 
 (timbre/set-config! [:appenders :spit :enabled?] true)
-(timbre/set-config! [:shared-appender-config :spit-filename] "patalyze.log")
+(timbre/set-config! [:shared-appender-config :spit-filename] (str (env :data-dir) "/patalyze.log"))
 
 (def ^:dynamic *bulk-size* 3000)
 
