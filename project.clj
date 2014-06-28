@@ -8,19 +8,28 @@
                  [org.clojure/core.match "0.2.1"]
                  [prismatic/schema "0.2.1"]
                  [com.taoensso/timbre "3.2.1"]
-                 [riemann-clojure-client "0.2.10"]
+                 [riemann-clojure-client "0.2.11"]
                  [org.clojure/tools.nrepl "0.2.3"]
-                 [clojurewerkz/elastisch "2.0.0-rc1"]
+                 [clojurewerkz/elastisch "2.0.0"]
                  [enlive "1.1.5"]
+
+                 [liberator "0.11.0"]
+                 [compojure "1.1.8"]
+                 [ring/ring-core "1.3.0"]
+                 [ring/ring-jetty-adapter "1.3.0"]
                  [environ "0.5.0"]]
                  ; [lein-light-nrepl "0.0.17"]]
 
-  :plugins [[lein-environ "0.5.0"]]
+  :plugins [[lein-environ "0.5.0"]
+            [lein-ring "0.8.10"]]
   ; :repl-options {:nrepl-middleware [lighttable.nrepl.handler/lighttable-ops]}
   :profiles {:dev {:env {:data-dir      "data"
                          :db-private    "127.0.0.1"
                          :elasticsearch "http://127.0.0.1:9200"
                          :riemann       "127.0.0.1"}}}
 
-  :main patalyze.nrepl
+  :ring {:handler patalyze.core/handler
+         :adapter {:port 8000}}
+
+  :main patalyze.core
   :uberjar-name "patalyze-standalone.jar")
