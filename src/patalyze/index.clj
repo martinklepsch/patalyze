@@ -1,4 +1,4 @@
-(ns patalyze.core
+(ns patalyze.index
   (:require [patalyze.retrieval   :as retrieval]
             [patalyze.parser      :as parser]
             [riemann.client       :as r]
