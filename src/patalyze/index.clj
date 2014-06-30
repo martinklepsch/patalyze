@@ -195,14 +195,40 @@
       {(archive-for-date date) s}))))
 
 (defn patents-by-inventor [inventor]
-  (esd/scroll-seq es
-    (esd/search es "patalyze_development" "patent"
-                :query (q/match :inventors inventor)
-                :search_type "query_then_fetch"
-                :scroll "1m"
-                :size 20)))
+  (map :_source
+    (esd/scroll-seq es
+      (esd/search es "patalyze_development" "patent"
+                  :query (q/match :inventors inventor :operator :and)
+                  :search_type "query_then_fetch"
+                  :scroll "1m"
+                  :size 20))))
+
+(defn patents-by-org-and-date [org date]
+  (map :_source
+    (esd/scroll-seq es
+      (esd/search es "patalyze_development" "patent"
+                  :query (q/match :organization org :operator :and)
+                  :filter {:range  {:publication-date {:gte date :lte date}}}; ))))
+                  :scroll "1m"
+                  :size 20))))
 
 (comment
+  (map (comp :organization :_source)
+    (esd/scroll-seq es
+      (esd/search es "patalyze_development" "patent"
+        :query (q/match :organization "Apple Inc."))))
+
+  (count (map :organization
+    (patents-by-org-and-date "Apple Inc." "20140612")))
+  (count (map :organization
+    (patents-by-org-and-date "Apple Inc." "20140619")))
+
+  (set (map :organization
+    (patents-by-inventor "Christopher D. Prest")))
+  (count
+    (patents-by-org-and-date "Apple Inc." "20140612"))
+  (esi/update-mapping es "patalyze_development" "patent" :mapping cmapping) 
+
   (connect-elasticsearch)
   (:count (esd/count "patalyze_development" "patent" (q/match-all)))
   (retrieval/patent-application-files)
