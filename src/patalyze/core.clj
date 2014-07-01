@@ -21,12 +21,17 @@
   :available-media-types  ["text/csv" "application/json"]
   :handle-ok  (fn  [_] (simplify-maps (index/patents-by-org-and-date "Apple Inc." pub-date))))
 
+(defresource orgs [org]
+  :available-media-types  ["text/csv" "application/json"]
+  :handle-ok  (fn  [_] (simplify-maps (index/patents-by-org org))))
+
 (defresource stats []
   :available-media-types ["application/json"]
   :handle-ok (fn [_] (index/patent-count)))
 
 (defroutes app
   (ANY "/apple/:pub-date" [pub-date] (apple pub-date))
+  (ANY "/by-org/:org" [org] (orgs org))
   (ANY "/stats" [] (stats)))
 
 (def handler 
