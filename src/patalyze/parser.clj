@@ -1,7 +1,6 @@
 (ns patalyze.parser
   (:require [net.cgrand.enlive-html       :as html]
             [riemann.client               :as r]
-            [environ.core         :refer [env]]
             [taoensso.timbre              :as timbre]
             [clojure.core.match   :refer (match)]))
 

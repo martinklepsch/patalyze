@@ -1,15 +1,8 @@
 (ns patalyze.retrieval
   (:require [riemann.client :as r]
-            [environ.core         :refer [env]]
+            [patalyze.config    :refer [c env]]
             [net.cgrand.enlive-html :as html])
   (:import (java.util.zip ZipFile)))
-
-(def c (r/tcp-client {:host (env :db-private)}))
-
-(let [data-dir (str (env :data-dir) "/applications")]
-  (if-not
-    (.exists (clojure.java.io/as-file data-dir))
-      (.mkdir (java.io.File. data-dir))))
 
 (def ^:dynamic *applications-biblio-url*
   "http://www.google.com/googlebooks/uspto-patents-applications-biblio.html")
@@ -24,7 +17,7 @@
 
 (defn patent-application-files []
   "Find all xmls in the resources/patent_archives/ directory"
-  (let [directory (clojure.java.io/file (str (env :data-dir) "/applications/"))
+  (let [directory (clojure.java.io/file (str (deref (env :data-dir)) "/applications/"))
         files (file-seq directory)]
      (sort-by
        #(apply str (re-seq #"\d{6}" %))
@@ -40,10 +33,10 @@
 
 (defn copy-uri-to-file [[file uri]]
   (with-open [in (clojure.java.io/input-stream uri)
-              out (clojure.java.io/output-stream (str (env :data-dir) "/applications/" file))]
+              out (clojure.java.io/output-stream (str (deref (env :data-dir)) "/applications/" file))]
     (do
       (clojure.java.io/copy in out)
-      (r/send-event c {:ttl 300 :service "patalyze.retrieval"
+      (r/send-event @c {:ttl 300 :service "patalyze.retrieval"
                        :tag "downloaded" :description file
                        :state "ok"}))))
 

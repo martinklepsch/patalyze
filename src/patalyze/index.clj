@@ -1,9 +1,9 @@
 (ns patalyze.index
   (:require [patalyze.retrieval   :as retrieval]
             [patalyze.parser      :as parser]
+            [patalyze.config      :refer [c es env]]
             [riemann.client       :as r]
             [schema.core          :as s]
-            [environ.core         :refer [env]]
             [taoensso.timbre      :as timbre :refer (log  trace  debug  info  warn  error)]
             [clojurewerkz.elastisch.rest          :as esr]
             [clojurewerkz.elastisch.rest.index    :as esi]
@@ -14,19 +14,13 @@
             [clojurewerkz.elastisch.rest.response :as esresp])
   (:import (java.util.concurrent TimeUnit Executors)))
 
-(def c  (r/tcp-client {:host (env :db-private)}))
-(def es (esr/connect (str "http://" (env :db-private) ":9200")))
-
-(timbre/set-config! [:appenders :spit :enabled?] true)
-(timbre/set-config! [:shared-appender-config :spit-filename] (str (env :data-dir) "/patalyze.log"))
-
 (def ^:dynamic *bulk-size* 3000)
 
-(def patent-count-notifier
-  (.scheduleAtFixedRate (Executors/newScheduledThreadPool 1)
-    #(r/send-event c {:ttl 20 :service "patalyze.index/document-count"
-                      :state "ok" :metric (:count (esd/count es "patalyze_development" "patent" (q/match-all)))})
-    0 10 TimeUnit/SECONDS))
+; (def patent-count-notifier
+;   (.scheduleAtFixedRate (Executors/newScheduledThreadPool 1)
+;     #(r/send-event @c {:ttl 20 :service "patalyze.index/document-count"
+;                       :state "ok" :metric (:count (esd/count @es "patalyze_development" "patent" (q/match-all)))})
+;     0 10 TimeUnit/SECONDS))
 
 (defn version-samples []
   "Find all xmls in the resources/patent_archives/ directory"
@@ -55,7 +49,7 @@
 ;; ignores the elasticsearch part
 (defn read-file! [f]
   (doseq [p (read-file f)]
-    (r/send-event c {:ttl 20 :service "patalyze.parse"
+    (r/send-event @c {:ttl 20 :service "patalyze.parse"
                      :description (:uid p) :state "ok"})))
 
 ;; BULK INSERTION
@@ -84,10 +78,10 @@
 
 (defn partitioned-bulk-op [patents]
   (doseq [pat (partition-all *bulk-size* patents)]
-    (let [res (esb/bulk es (prepare-bulk-op pat))]
-      (r/send-event c {:ttl 20 :service "patalyze.bulk"
-                       :description (str (count pat) " patents upserted")
-                       :metric (:took res) :state (if (:errors res) "error" "ok")}))))
+    (let [res (esb/bulk @es (prepare-bulk-op pat))]
+      (r/send-event @c {:ttl 20 :service "patalyze.bulk"
+                        :description (str (count pat) " patents upserted")
+                        :metric (:took res) :state (if (:errors res) "error" "ok")}))))
 
 (def PatentApplication
   {:uid s/Str
@@ -118,16 +112,16 @@
 ;;   (read-file (first (retrieval/patent-application-files))))
 
 (defn create-elasticsearch-mapping []
-  (esi/create es "patalyze_development" :mappings cmapping))
+  (esi/create @es "patalyze_development" :mappings cmapping))
 
 (defn patent-count []
-  (esd/count es "patalyze_development" "patent" (q/match-all)))
+  (esd/count @es "patalyze_development" "patent" (q/match-all)))
 
 (defn clear-patents []
-  (esd/delete-by-query-across-all-indexes-and-types es (q/match-all)))
+  (esd/delete-by-query-across-all-indexes-and-types @es (q/match-all)))
 
 (defn count-for-range [from to]
-  (esresp/total-hits (esd/search es "patalyze_development" "patent"
+  (esresp/total-hits (esd/search @es "patalyze_development" "patent"
                                  :query (q/range :publication-date :from from :to to))))
 
 (defn count-patents-in-archives []
@@ -143,18 +137,18 @@
     (spit file map-to-merge)))
 
 (defn update-archive-stats-file! [archives]
-  (let [stats-file   (str (env :data-dir) "/archive-stats.edn")]
+  (let [stats-file   (str (deref (env :data-dir)) "/archive-stats.edn")]
     (merge-mapfile! stats-file
       (into {}
         (for [f archives]
            {(apply str (re-seq #"\d{8}" f)) (count (retrieval/read-and-split-from-zipped-xml f))})))))
 
-;; (let [ks (keys (read-string (slurp (str (env :data-dir) "/archive-stats.edn"))))
+;; (let [ks (keys (read-string (slurp (str (deref (env :data-dir) "/archive-stats.edn"))))
 ;;       fs (retrieval/patent-application-files)]
 ;;   (filter #(some #{(apply str (re-seq #"\d{8}" %))} ks) fs))
 
 (defn archive-stats []
-  (let [stats-file (str (env :data-dir) "/archive-stats.edn")
+  (let [stats-file (str (deref (env :data-dir)) "/archive-stats.edn")
         on-disk    (retrieval/patent-application-files)]
     (if (not (.exists (clojure.java.io/as-file stats-file)))
       (do
@@ -168,7 +162,7 @@
         (read-string (slurp stats-file))))))
 
 (defn database-stats []
-  (let [agg (esd/search es "patalyze_development" "patent"
+  (let [agg (esd/search @es "patalyze_development" "patent"
                         { :query (q/match-all)
                           :aggregations {:dates (a/terms "publication-date" {:size 0})}})
         pub-dates (get-in agg [:aggregations :dates :buckets])]
@@ -196,26 +190,26 @@
 
 (defn patents-by-inventor [inventor]
   (map :_source
-    (esd/scroll-seq es
-      (esd/search es "patalyze_development" "patent"
+    (esd/scroll-seq @es
+      (esd/search @es "patalyze_development" "patent"
                   :query (q/match :inventors inventor :operator :and)
                   :search_type "query_then_fetch"
                   :scroll "1m"
                   :size 20))))
 
-(defn patents-by-org-and-date [org date]
+(defn patents-by-org [org]
   (map :_source
-    (esd/scroll-seq es
-      (esd/search es "patalyze_development" "patent"
+    (esd/scroll-seq @es
+      (esd/search @es "patalyze_development" "patent"
                   :query (q/match :organization org :operator :and)
-                  :filter {:range  {:publication-date {:gte date :lte date}}}; ))))
+                  :sort :publication-date
                   :scroll "1m"
                   :size 20))))
 
 (comment
   (map (comp :organization :_source)
-    (esd/scroll-seq es
-      (esd/search es "patalyze_development" "patent"
+    (esd/scroll-seq @es
+      (esd/search @es "patalyze_development" "patent"
         :query (q/match :organization "Apple Inc."))))
 
   (count (map :organization
@@ -227,7 +221,7 @@
     (patents-by-inventor "Christopher D. Prest")))
   (count
     (patents-by-org-and-date "Apple Inc." "20140612"))
-  (esi/update-mapping es "patalyze_development" "patent" :mapping cmapping) 
+  (esi/update-mapping @es "patalyze_development" "patent" :mapping cmapping) 
 
   (connect-elasticsearch)
   (:count (esd/count "patalyze_development" "patent" (q/match-all)))
