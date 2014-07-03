@@ -1,7 +1,8 @@
 (ns patalyze.index
   (:require [patalyze.retrieval   :as retrieval]
             [patalyze.parser      :as parser]
-            [patalyze.config      :refer [c es env]]
+            [environ.core         :refer [env]]
+            [patalyze.config      :refer [c es]]
             [riemann.client       :as r]
             [schema.core          :as s]
             [taoensso.timbre      :as timbre :refer (log  trace  debug  info  warn  error)]
@@ -135,14 +136,14 @@
     (spit file map-to-merge)))
 
 (defn update-archive-stats-file! [archives]
-  (let [stats-file   (str (deref (env :data-dir)) "/archive-stats.edn")]
+  (let [stats-file   (str (env :data-dir) "/archive-stats.edn")]
     (merge-mapfile! stats-file
       (into {}
         (for [f archives]
            {(apply str (re-seq #"\d{8}" f)) (count (retrieval/read-and-split-from-zipped-xml f))})))))
 
 (defn archive-stats []
-  (let [stats-file (str (deref (env :data-dir)) "/archive-stats.edn")
+  (let [stats-file (str (env :data-dir) "/archive-stats.edn")
         on-disk    (retrieval/patent-application-files)]
     (if (not (.exists (clojure.java.io/as-file stats-file)))
       (do

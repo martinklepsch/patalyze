@@ -1,7 +1,7 @@
 (ns patalyze.core
   (:require [clojure.tools.nrepl.server :as nrepl]
             [patalyze.index             :as index]
-            [patalyze.config            :refer  [env]]
+            [environ.core               :refer  [env]]
             [liberator.core             :refer  [resource defresource]]
             [ring.middleware.params     :refer  [wrap-params]]
             [ring.middleware.reload     :refer  [wrap-reload]]
@@ -43,7 +43,7 @@
   "The application's main function"
   [& _]
   (timbre/set-config! [:appenders :spit :enabled?] true)
-  (timbre/set-config! [:shared-appender-config :spit-filename] (str (deref (env :data-dir)) "/patalyze.log"))
+  (timbre/set-config! [:shared-appender-config :spit-filename] (str (env :data-dir) "/patalyze.log"))
 
   (nrepl/start-server :bind "0.0.0.0" :port 42042)
   (run-jetty #'handler {:port 3000 :join? false})

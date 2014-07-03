@@ -1,6 +1,7 @@
 (ns patalyze.retrieval
-  (:require [riemann.client :as r]
-            [patalyze.config    :refer [c env]]
+  (:require [riemann.client     :as r]
+            [environ.core       :refer [env]]
+            [patalyze.config    :refer [c]]
             [net.cgrand.enlive-html :as html])
   (:import (java.util.zip ZipFile)))
 
@@ -17,7 +18,7 @@
 
 (defn patent-application-files []
   "Find all xmls in the resources/patent_archives/ directory"
-  (let [directory (clojure.java.io/file (str (deref (env :data-dir)) "/applications/"))
+  (let [directory (clojure.java.io/file (str (env :data-dir) "/applications/"))
         files (file-seq directory)]
      (sort-by
        #(apply str (re-seq #"\d{6}" %))
@@ -33,7 +34,7 @@
 
 (defn copy-uri-to-file [[file uri]]
   (with-open [in (clojure.java.io/input-stream uri)
-              out (clojure.java.io/output-stream (str (deref (env :data-dir)) "/applications/" file))]
+              out (clojure.java.io/output-stream (str (env :data-dir) "/applications/" file))]
     (do
       (clojure.java.io/copy in out)
       (r/send-event @c {:ttl 300 :service "patalyze.retrieval"
