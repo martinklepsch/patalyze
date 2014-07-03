@@ -92,6 +92,7 @@
 ; ASSIGNEE
 (defn orgname [version xml-resource]
   (let [path    (dispatch-version-path version {:v15 [:subdoc-bibliographic-information :correspondence-address :name-2]
+                                                :v16 [:subdoc-bibliographic-information :assignee :organization-name]
                                                 :v40 [:us-bibliographic-data-application :parties :correspondence-address :addressbook :name]
                                                 :v41 [:us-bibliographic-data-application :assignees :orgname]})
         assignee (first (html/select xml-resource path))]
