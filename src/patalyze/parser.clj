@@ -118,4 +118,6 @@
      :inventors        (inventors version xml-resource)
      :abstract         (invention-abstract version xml-resource)
      :title            (invention-title version xml-resource)
+     :version          version
+     :xml-source       xml-str
      :uid              (publication-identifier version xml-resource)}))

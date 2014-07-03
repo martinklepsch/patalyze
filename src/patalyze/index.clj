@@ -96,7 +96,8 @@
 (def cmapping
   { "patent"
     { :properties
-      { :inventors { :type "string" :index "not_analyzed" }
+      { :inventors  { :type "string" :index "not_analyzed" }
+        :xml-source { :type "string" :index "not_analyzed" }
         :publication-date { :type "date" }
         :filing-date      { :type "date" }}}})
 
