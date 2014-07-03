@@ -109,9 +109,6 @@
   (partitioned-bulk-op
     (flatten (map read-file files))))
 
-;; (def some-patents
-;;   (read-file (first (retrieval/patent-application-files))))
-
 (defn create-elasticsearch-mapping []
   (esi/create @es "patalyze_development" :mappings cmapping))
 
@@ -143,10 +140,6 @@
       (into {}
         (for [f archives]
            {(apply str (re-seq #"\d{8}" f)) (count (retrieval/read-and-split-from-zipped-xml f))})))))
-
-;; (let [ks (keys (read-string (slurp (str (deref (env :data-dir) "/archive-stats.edn"))))
-;;       fs (retrieval/patent-application-files)]
-;;   (filter #(some #{(apply str (re-seq #"\d{8}" %))} ks) fs))
 
 (defn archive-stats []
   (let [stats-file (str (deref (env :data-dir)) "/archive-stats.edn")
@@ -194,7 +187,7 @@
     (esd/scroll-seq @es
       (esd/search @es "patalyze_development" "patent"
                   :query (q/match :inventors inventor :operator :and)
-                  :search_type "query_then_fetch"
+                  :sort :publication-date
                   :scroll "1m"
                   :size 20))))
 
@@ -206,6 +199,18 @@
                   :sort :publication-date
                   :scroll "1m"
                   :size 20))))
+
+; (patent-count)
+; (index-files (take 1
+;   (retrieval/patent-application-files)))
+; (map :_source
+;      (esd/scroll-seq @es
+;                      (esd/search @es "patalyze_development" "patent" :query (q/match-all) :filter {:exists { :field :organization}} :sort :publication-date)))
+; (patents-by-org "Apple")
+; (first (patents-by-inventor "Duncan Kerr"))
+; (def some-patents
+;   (read-file (first (retrieval/patent-application-files))))
+
 
 (comment
   (map (comp :organization :_source)
