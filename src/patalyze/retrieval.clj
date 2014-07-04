@@ -36,10 +36,14 @@
   (with-open [in (clojure.java.io/input-stream uri)
               out (clojure.java.io/output-stream (str (env :data-dir) "/applications/" file))]
     (do
-      (clojure.java.io/copy in out)
-      (r/send-event @c {:ttl 300 :service "patalyze.retrieval"
-                       :tag "downloaded" :description file
-                       :state "ok"}))))
+      (clojure.java.io/copy in out))))
+      ; (r/send-event @c {:ttl 300 :service "patalyze.retrieval"
+      ;                  :tag "downloaded" :description file
+      ;                  :state "ok"})))
+
+(defn fetch-missing []
+  ;; TODO probably doseq is more appropriate here
+  (map copy-uri-to-file (not-downloaded)))
 
 (defn find-xml [zipfile]
   (first

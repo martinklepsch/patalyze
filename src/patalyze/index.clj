@@ -80,9 +80,10 @@
 (defn partitioned-bulk-op [patents]
   (doseq [pat (partition-all *bulk-size* patents)]
     (let [res (esb/bulk @es (prepare-bulk-op pat))]
-      (r/send-event @c {:ttl 20 :service "patalyze.bulk"
-                        :description (str (count pat) " patents upserted")
-                        :metric (:took res) :state (if (:errors res) "error" "ok")}))))
+      (info (count pat) "patents upserted in " (:took res)))))
+      ; (r/send-event @c {:ttl 20 :service "patalyze.bulk"
+      ;                   :description (str (count pat) " patents upserted")
+      ;                   :metric (:took res) :state (if (:errors res) "error" "ok")}))))
 
 (def PatentApplication
   {:uid s/Str

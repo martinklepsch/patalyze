@@ -1,7 +1,5 @@
 (ns patalyze.parser
   (:require [net.cgrand.enlive-html       :as html]
-            [riemann.client               :as r]
-            [taoensso.timbre              :as timbre]
             [clojure.core.match   :refer (match)]))
 
 (defn union-re-patterns [& patterns]
