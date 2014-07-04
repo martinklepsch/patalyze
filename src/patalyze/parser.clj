@@ -110,12 +110,11 @@
 (defn patentxml->map [xml-str]
   (let [version      (detect-version xml-str)
         xml-resource (parse xml-str)]
-    {:filing-date      (filing-date version xml-resource)
+    {:version          version
+     :filing-date      (filing-date version xml-resource)
      :publication-date (publication-date version xml-resource)
      :organization     (orgname version xml-resource)
      :inventors        (inventors version xml-resource)
      :abstract         (invention-abstract version xml-resource)
      :title            (invention-title version xml-resource)
-     :version          version
-     :xml-source       xml-str
      :uid              (publication-identifier version xml-resource)}))
