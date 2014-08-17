@@ -111,6 +111,12 @@
   (partitioned-bulk-op
     (flatten (map read-file files))))
 
+; (defn complete-reindex! []
+;   (let [nd (retrieval/not-downloaded)]
+;     (pmap index-files (partition-all (/ (count nd) )))))
+
+; (.. Runtime getRuntime availableProcessors)
+
 (defn create-elasticsearch-mapping []
   (esi/create @es "patalyze_development" :mappings cmapping))
 
@@ -168,7 +174,7 @@
            {(apply str (re-seq #"\d{8}" f)) 0}))
       (into {}
         (for [p pub-dates]
-          {(apply str (re-seq #"\d{8}" (:key p))) (:doc_count p)})))))
+          {(apply str (re-seq #"\d{8}" (:key_as_string p))) (:doc_count p)})))))
 
 (defn index-integrity-stats []
   (merge-with #(zipmap [:archive :database] %&) (archive-stats) (database-stats)))
@@ -184,37 +190,117 @@
     (for [[date s] incomplete]
       {(archive-for-date date) s}))))
 
-(defn patents-by-inventor [inventor]
+(defn scroll [search-res]
   (map :_source
-    (esd/scroll-seq @es
-      (esd/search @es "patalyze_development" "patent"
-                  :query (q/match :inventors inventor :operator :and)
-                  :sort :publication-date
-                  :scroll "1m"
-                  :size 20))))
+    (esd/scroll-seq @es search-res)))
+
+(defn patents-by-inventor [inventor]
+  (esd/search @es "patalyze_development" "patent"
+              :query (q/match :inventors inventor :operator :and)
+              :sort :publication-date
+              :scroll "1m"
+              :size 20))
 
 (defn patents-by-org [org]
-  (map :_source
-    (esd/scroll-seq @es
-      (esd/search @es "patalyze_development" "patent"
-                  :query (q/match :organization org :operator :and)
-                  :sort :publication-date
-                  :scroll "1m"
-                  :size 20))))
+  (scroll
+   (esd/search @es "patalyze_development" "patent"
+               :query (q/match :organization org :operator :and)
+               :sort :publication-date
+               :scroll "1m"
+               :size 20)))
 
+(defn inventors-of-organization [org]
+    (let [aggregation (esd/search @es "patalyze_development" "patent"
+                                { :query (q/match :organization org :operator :and)
+                                  :aggregations {:inventors (a/terms "inventors" {:size 0})}})
+          inventors (->> aggregation :aggregations :inventors :buckets (map :key))]
+      (set inventors)))
+
+(defn peers-of-inventors-of-organization [org]
+  (let [inventors (inventors-of-organization org)]
+    (clojure.set/difference
+     (set (flatten (map :inventors
+                        (scroll
+                         (esd/search @es "patalyze_development" "patent"
+                                     :query { :terms { :inventors inventors }}
+                                     :sort :publication-date
+                                     :scroll "1m"
+                                     :size 20)))))
+     inventors)))
+
+(defn hidden-patents [org]
+  (let [inventors (inventors-of-organization org)
+        external  (peers-of-inventors-of-organization org)]
+    (scroll
+     (esd/search @es "patalyze_development" "patent"
+                 :query (q/bool { :must { :terms { :inventors inventors }}
+                                 :must_not [{ :terms { :inventors external }}
+                                            (q/match :organization org)]})
+                 :sort :publication-date
+                 :scroll "1m"
+                 :size 20))))
+
+(defn co-patents [org]
+  (let [inventors (inventors-of-organization org)]
+    (scroll
+     (esd/search @es "patalyze_development" "patent"
+                 :query (q/bool { :must { :terms { :inventors inventors }}
+                                  :must_not (q/match :organization org)})
+                 :sort :publication-date
+                 :scroll "1m"
+                 :size 20))))
+
+;; (database-stats)
+;; (patent-count)
+;; (count (archive-stats))
+;; (incompletely-indexed-archives)
+;; (count (read-file (first (keys (incompletely-indexed-archives)))))
+;; (retrieval/patent-application-files)
+;; (count (patents-by-org "Apple Inc"))
+
+(defn tier-stats-for-org [org]
+  (let [patents (patents-by-org org)
+        hidden  (hidden-patents org)
+        copats  (co-patents org)]
+    {:patents (count patents)
+     :hidden  (count hidden)
+     :copats  (count copats)
+     :dupes   (count (clojure.set/intersection (set patents) (set hidden) (set copats)))}))
+
+;; (patent-count)
+;; (count (patents-by-org "Apple Inc"))
+;; (co-patents "Apple Inc")
+;; (tier-stats-for-org "International Business Machines Corporation")
+;; (tier-stats-for-org "Apple Inc")
+;; (count (patents-by-org "International Business Machines Corporation"))
+
+; get list of people that explicitly published patents for apple
+; get list of people that worked with these people but did not publish patents under apple
+;
+;  (esd/search @es "patalyze_development" "patent"
+;              :query (q/match :organization org :operator :and)
+;              :sort :publication-date
+;              :scroll "1m"
+;              :size 20))
+
+; (deref es)
+; (update-archive-stats-file!)
 ; (patent-count)
-; (index-files (take 1
-;   (retrieval/patent-application-files)))
+; (retrieval/not-downloaded)
+; (archive-stats)
+; (incompletely-indexed-archives)
 ; (map :_source
 ;      (esd/scroll-seq @es
 ;                      (esd/search @es "patalyze_development" "patent" :query (q/match-all) :filter {:exists { :field :organization}} :sort :publication-date)))
 ; (patents-by-org "Apple")
-; (first (patents-by-inventor "Duncan Kerr"))
+; (patents-by-inventor "Duncan Kerr")
 ; (def some-patents
 ;   (read-file (first (retrieval/patent-application-files))))
 
-
 (comment
+  (patent-count) ;; 3777307
+  (pmap index-files (partition-all 
+    (reverse (retrieval/patent-application-files))))
   (map (comp :organization :_source)
     (esd/scroll-seq @es
       (esd/search @es "patalyze_development" "patent"
