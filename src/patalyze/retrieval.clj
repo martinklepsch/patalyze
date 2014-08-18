@@ -1,6 +1,5 @@
 (ns patalyze.retrieval
-  (:require [riemann.client     :as r]
-            [environ.core       :refer [env]]
+  (:require [environ.core       :refer [env]]
             [patalyze.config    :refer [c]]
             [net.cgrand.enlive-html :as html])
   (:import (java.util.zip ZipFile)))
@@ -37,9 +36,6 @@
               out (clojure.java.io/output-stream (str (env :data-dir) "/applications/" file))]
     (do
       (clojure.java.io/copy in out))))
-      ; (r/send-event @c {:ttl 300 :service "patalyze.retrieval"
-      ;                  :tag "downloaded" :description file
-      ;                  :state "ok"})))
 
 (defn fetch-missing []
   ;; TODO probably doseq is more appropriate here
