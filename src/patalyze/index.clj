@@ -23,36 +23,6 @@
 ;                       :state "ok" :metric (:count (esd/count @es "patalyze_development" "patent" (q/match-all)))})
 ;     0 10 TimeUnit/SECONDS))
 
-(defn version-samples []
-  "Find all xmls in the resources/patent_archives/ directory"
-  (let [directory (clojure.java.io/file "resources/samples/")
-        files (file-seq directory)]
-    (zipmap [:v15 :v16 :v40 :v41 :v42 :v43]
-            (map slurp (filter #(re-seq #".*\.xml" %) (map str files))))))
-
-(defn test-parse-fn [f]
-  "use like this: (test-parse-fn parser/filing-date)"
-  (let [zipped (into {} (for [[k v] (version-samples)] [k (parser/parse v)]))]
-    (into {} (for [[k v] zipped] [k (f k v)]))))
-
-(defn read-file [xml-archive]
-  "Reads one weeks patent archive and returns a seq of maps w/ results"
-  (let [snippets (retrieval/read-and-split-from-zipped-xml xml-archive)]
-    (map-indexed
-      #(try (parser/patentxml->map %2)
-        (catch Exception e
-          (error xml-archive "::" %1 "\n" e)
-          nil))
-      snippets)))
-
-;; it seems that the parsing is actually not the bottleneck and that elasticsearch
-;; is causing the trouble now. this fn should give me a realistic parsing-rate because it
-;; ignores the elasticsearch part
-(defn read-file! [f]
-  (doseq [p (read-file f)]
-    (r/send-event @c {:ttl 20 :service "patalyze.parse"
-                     :description (:uid p) :state "ok"})))
-
 ;; BULK INSERTION
 (def ^:private special-operation-keys
   [:_index :_type :_id :_routing :_percolate :_parent :_timestamp :_ttl])
@@ -109,7 +79,7 @@
 ;; INDEX WITH ELASTISCH
 (defn index-files [files]
   (partitioned-bulk-op
-    (flatten (map read-file files))))
+    (flatten (map parser/read-file files))))
 
 ; (defn complete-reindex! []
 ;   (let [nd (retrieval/not-downloaded)]

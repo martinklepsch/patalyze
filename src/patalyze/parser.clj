@@ -1,6 +1,8 @@
 (ns patalyze.parser
-  (:require [net.cgrand.enlive-html       :as html]
-            [clojure.core.match   :refer (match)]))
+  (:require [patalyze.retrieval      :as retrieval]
+            [net.cgrand.enlive-html  :as html]
+            [taoensso.timbre         :as timbre :refer (log  trace  debug  info  warn  error)]
+            [clojure.core.match      :refer (match)]))
 
 (defn union-re-patterns [& patterns]
   (re-pattern (apply str (interpose "|" (map #(str "(?:" % ")") patterns)))))
@@ -107,6 +109,18 @@
      ["pap-v15-2001-01-31.dtd"]                   :v15
      :else :not-recognized))
 
+;; (defn version-samples []
+;;   "Find all xmls in the resources/patent_archives/ directory"
+;;   (let [directory (clojure.java.io/file "resources/samples/")
+;;         files (file-seq directory)]
+;;     (zipmap [:v15 :v16 :v40 :v41 :v42 :v43]
+;;             (map slurp (filter #(re-seq #".*\.xml" %) (map str files))))))
+
+;; (defn test-parse-fn [f]
+;;   "use like this: (test-parse-fn parser/filing-date)"
+;;   (let [zipped (into {} (for [[k v] (version-samples)] [k (parser/parse v)]))]
+;;     (into {} (for [[k v] zipped] [k (f k v)]))))
+
 (defn patentxml->map [xml-str]
   (let [version      (detect-version xml-str)
         xml-resource (parse xml-str)]
@@ -118,3 +132,13 @@
      :abstract         (invention-abstract version xml-resource)
      :title            (invention-title version xml-resource)
      :uid              (publication-identifier version xml-resource)}))
+
+(defn read-file [xml-archive]
+  "Reads one weeks patent archive and returns a seq of maps w/ results"
+  (let [snippets (retrieval/read-and-split-from-zipped-xml xml-archive)]
+    (map-indexed
+      #(try (patentxml->map %2)
+        (catch Exception e
+          (error xml-archive "::" %1 "\n" e)
+          nil))
+      snippets)))
