@@ -13,7 +13,7 @@
                  [clojurewerkz/elastisch "2.0.0"]
                  [enlive "1.1.5"]
 
-                 [liberator "0.11.0"]
+                 [liberator "0.12.0"]
                  [compojure "1.1.8"]
                  [ring/ring-core "1.3.0"]
                  [ring/ring-devel "1.3.0"]
