@@ -10,6 +10,10 @@
             [taoensso.timbre            :as timbre :refer [log  trace  debug  info  warn  error]])
   (:gen-class))
 
+(defn initialize-logger! []
+  (timbre/set-config! [:appenders :spit :enabled?] true)
+  (timbre/set-config! [:shared-appender-config :spit-filename]
+                      (str (env :data-dir) "/patalyze.log")))
 
 (defn simplify-maps [ms]
   (map
@@ -34,17 +38,14 @@
   (ANY "/by-inventor/:inventor" [inventor] (inventors inventor))
   (ANY "/stats" [] (stats)))
 
-(def handler 
-  (-> app 
+(def handler
+  (-> app
       (wrap-reload)
-      (wrap-params))) 
+      (wrap-params)))
 
-(defn -main
+(defn -main [& _]
   "The application's main function"
-  [& _]
-  (timbre/set-config! [:appenders :spit :enabled?] true)
-  (timbre/set-config! [:shared-appender-config :spit-filename] (str (env :data-dir) "/patalyze.log"))
-
+  (initialize-logger!)
   (nrepl/start-server :bind "0.0.0.0" :port 42042)
   (run-jetty #'handler {:port 3000 :join? false})
-  (println "nREPL Server started on port 42042")) ; :handler (default-handler lighttable-ops)))
+  (info "nREPL Server started on port 42042")) ; :handler (default-handler lighttable-ops)))
