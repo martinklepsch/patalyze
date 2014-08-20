@@ -1,6 +1,5 @@
 (ns patalyze.retrieval
   (:require [environ.core       :refer [env]]
-            [patalyze.config    :refer [c]]
             [net.cgrand.enlive-html :as html])
   (:import (java.util.zip ZipFile)))
 
@@ -18,10 +17,16 @@
 (defn patent-application-files []
   "Find all xmls in the resources/patent_archives/ directory"
   (let [directory (clojure.java.io/file (str (env :data-dir) "/applications/"))
-        files (file-seq directory)]
+        files     (filter #(re-seq #"\.zip" %) (map str (file-seq directory)))]
      (sort-by
        #(apply str (re-seq #"\d{6}" %))
-        (filter #(re-seq #"\.zip" %) (map str files)))))
+       files)))
+
+(defn applications-by-year []
+  (let [directory (clojure.java.io/file (str (env :data-dir) "/applications/"))
+        files     (filter #(re-seq #"\.zip" %) (map str (file-seq directory)))
+        year      #(keyword (last (first (re-seq #"pab(20\d{2})" (str %)))))]
+    (group-by year files)))
 
 (defn not-downloaded []
   (let [week-ids   (map #(clojure.string/replace % #"\.zip$" "") (keys (archive-links)))
