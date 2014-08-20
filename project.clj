@@ -24,7 +24,9 @@
   :plugins [[lein-environ "0.5.0"]
             [lein-ring "0.8.10"]]
   ; :repl-options {:nrepl-middleware [lighttable.nrepl.handler/lighttable-ops]}
-  :profiles {:dev {:env {:data-dir      "data"
+  :profiles {:dev {:repl-options {:init-ns patalyze.core
+                                  :init (initialize-logger!)}
+                   :env {:data-dir      "data"
                          :db-private    "127.0.0.1"
                          :elasticsearch "http://127.0.0.1:9200"
                          :riemann       "127.0.0.1"}}}
