@@ -11,6 +11,7 @@
                  [riemann-clojure-client "0.2.11"]
                  [org.clojure/tools.nrepl "0.2.3"]
                  [clojurewerkz/elastisch "2.0.0"]
+                 [clj-aws-s3 "0.3.9"]
                  [enlive "1.1.5"]
 
                  [liberator "0.12.0"]
