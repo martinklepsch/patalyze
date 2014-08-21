@@ -8,8 +8,8 @@
 
 
 (def bucket "patalyze")
-(def cred {:access-key "AKIAIRRBP23IYG7FCPIQ",
-           :secret-key "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"})
+(def cred {:access-key (env :aws-key)
+           :secret-key (env :aws-secret)})
 
 (defn str->gzipped-bytes [str]
   (with-open [out (ByteArrayOutputStream.)
@@ -37,11 +37,11 @@
     (with-open [content (clojure.java.io/input-stream (:content response))]
       (read-string (gzipped-input-stream->str content "UTF-8")))))
 
-(comment
-  (take 10 (reverse (sort (flatten (map :inventors
-                                        (filter #(= (s/lower-case (:organization %)) "apple inc.")
-                                                (retrieve-applications "20140102_wk01")))))))
+(defn list-applications []
+  (map :key
+       (:objects (s3/list-objects cred bucket {:prefix "applications/"}))))
 
+(comment
   (map :key
        (:objects (s3/list-objects cred bucket)))
   (slurp (:content (s3/get-object cred bucket "multipart-stream-test")))

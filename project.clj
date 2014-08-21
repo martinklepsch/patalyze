@@ -30,7 +30,9 @@
                    :env {:data-dir      "data"
                          :db-private    "127.0.0.1"
                          :elasticsearch "http://127.0.0.1:9200"
-                         :riemann       "127.0.0.1"}}}
+                         :riemann       "127.0.0.1"
+                         :aws-key       "AKIAIRRBP23IYG7FCPIQ"
+                         :aws-secret    "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"}}}
 
   :ring {:handler patalyze.core/handler
          :adapter {:port 8000}}
