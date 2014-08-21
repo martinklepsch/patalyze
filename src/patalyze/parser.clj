@@ -1,5 +1,7 @@
 (ns patalyze.parser
   (:require [patalyze.retrieval      :as retrieval]
+            [patalyze.storage        :as storage]
+            [clojure.string          :as string]
             [net.cgrand.enlive-html  :as html]
             [taoensso.timbre         :as timbre :refer (log  trace  debug  info  warn  error)]
             [clojure.core.match      :refer (match)]))
@@ -35,6 +37,11 @@
   (let [dispatched-version (prev-el version (keys path-map))]
     (dispatched-version path-map)))
 
+(defn tokenize-string [str]
+  (set (map string/lower-case (re-seq #"\w+" str))))
+
+(defn normalize-name [name-str]
+  (string/join " " (map string/capitalize (string/split name-str #"\s"))))
 
 ; TITLE
 (defn invention-title [version xml-resource]
@@ -122,16 +129,19 @@
 ;;     (into {} (for [[k v] zipped] [k (f k v)]))))
 
 (defn patentxml->map [xml-str]
-  (let [version      (detect-version xml-str)
-        xml-resource (parse xml-str)]
-    {:version          version
-     :filing-date      (filing-date version xml-resource)
-     :publication-date (publication-date version xml-resource)
-     :organization     (orgname version xml-resource)
-     :inventors        (inventors version xml-resource)
-     :abstract         (invention-abstract version xml-resource)
-     :title            (invention-title version xml-resource)
-     :uid              (publication-identifier version xml-resource)}))
+  (let [version       (detect-version xml-str)
+        xml-resource  (parse xml-str)
+        organization  (orgname version xml-resource)
+        inventor-list (inventors version xml-resource)]
+    {:version             version
+     :filing-date         (filing-date version xml-resource)
+     :publication-date    (publication-date version xml-resource)
+     :organization        organization
+     :organization-tokens (tokenize-string organization)
+     :inventors           (set (map normalize-name inventor-list))
+     :abstract            (invention-abstract version xml-resource)
+     :title               (invention-title version xml-resource)
+     :uid                 (publication-identifier version xml-resource)}))
 
 (defn read-file [xml-archive]
   "Reads one weeks patent archive and returns a seq of maps w/ results"
@@ -142,3 +152,20 @@
           (error xml-archive "::" %1 "\n" e)
           nil))
       snippets)))
+
+(defn parse-to-s3 [xml-archive]
+  (let [s3-key (last (first (re-seq #".+pab(\d{8}_wk\d{2}).zip" xml-archive)))]
+    (storage/store-applications
+     s3-key
+     (read-file xml-archive))
+    (info s3-key "persisted to S3")))
+
+(comment
+  (clojure.set/subset?
+   (tokenize-string "Apple, Inc.")
+   (tokenize-string "Apple Computer, Inc."))
+  ;; Patents in 2014: 230083
+  ;; (pmap parse-to-s3 (rest (:2014 (retrieval/applications-by-year))))
+  (parse-to-s3 (last (:2014 (retrieval/applications-by-year))))
+  (take 3 (:2014 (retrieval/applications-by-year))))
+  ;; (count (storage/retrieve-map ":2004"))
