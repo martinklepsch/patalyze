@@ -1,5 +1,6 @@
 (ns patalyze.retrieval
-  (:require [environ.core       :refer [env]]
+  (:require [patalyze.storage   :refer [list-applications]]
+            [environ.core       :refer [env]]
             [net.cgrand.enlive-html :as html])
   (:import (java.util.zip ZipFile)))
 
@@ -65,6 +66,40 @@
   (with-open [zip (ZipFile. file-name)
               xml (.getInputStream zip (find-xml zip))]
     (split-file xml)))
+
+(defn extract-archive-identifier [from-str]
+  (last (first (re-seq #"(\d{8}_wk\d{2})." from-str))))
+
+(defn identifier-contained? [l-ident ident]
+  (if ((set l-ident) ident)
+    true
+    false))
+
+(defn status []
+  ;; https://github.com/flatland/useful/blob/develop/src/flatland/useful/state.clj#L78
+  ;; Look into the stuff above to cache archive-links, patent-application-files and
+  ;; list-applications functions
+  (let [links       (archive-links)
+        files       (map extract-archive-identifier (patent-application-files))
+        s3-objects  (map extract-archive-identifier (list-applications))
+        downloaded? (partial identifier-contained? files)
+        on-s3?      (partial identifier-contained? s3-objects)]
+    (into {}
+          (for [k (map extract-archive-identifier (keys links))
+                v (vals links)]
+            (let [ident (extract-archive-identifier k)]
+              {k {:url v :on-disk (downloaded? k) :on-s3 (on-s3? k)}})))))
+
+(defn where [map key value]
+  (into {}
+        (filter #(= value (key (val %)))
+                map)))
+
+;; (where (status) :on-disk true)
+
+;; 1. get all archive identifiers from website
+;; 2. tag them with status booleans (downloaded, on-S3)
+;; 3. make them queriable with substrings of archive identifiers like "201401"
 
 (comment
   ;; download files matching a certain string
