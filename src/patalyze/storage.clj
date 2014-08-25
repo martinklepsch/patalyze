@@ -27,21 +27,36 @@
 
 (defn store-applications [pub-date applications]
   (let [string-val (pr-str applications)
-        key        (str "applications/" (name pub-date) ".edn")
+        key        (str "applications/" (name pub-date) ".edn.gz")
+        cache      (str (env :data-dir ) "/cache/applications/" (name pub-date) ".edn.gz")
         gzipped    (ByteArrayInputStream. (str->gzipped-bytes string-val))]
-    (s3/put-object cred bucket key gzipped {:content-encoding "gzip"})))
+    (with-open [out (clojure.java.io/output-stream cache)]
+      (do
+        (clojure.java.io/copy gzipped out)
+        (try
+          (s3/put-object cred bucket key gzipped {:content-encoding "gzip"})
+          (catch com.amazonaws.AmazonClientException e false))))))
 
 (defn retrieve-applications [pub-date]
   (let [key      (str "applications/" (name pub-date) ".edn")
-        response (s3/get-object cred bucket key)]
-    (with-open [content (clojure.java.io/input-stream (:content response))]
-      (read-string (gzipped-input-stream->str content "UTF-8")))))
+        cache    (str (env :data-dir ) "/cache/applications/" (name pub-date) ".edn.gz")
+        get-obj  #(clojure.java.io/input-stream (:content (s3/get-object cred bucket key)))]
+    (if (.exists (clojure.java.io/file cache))
+     (gzipped-input-stream->str (clojure.java.io/input-stream cache) "UTF-8")
+     (try
+       (with-open [content (get-obj)
+                   out     (clojure.java.io/output-stream cache)]
+         (clojure.java.io/copy content out)
+         (read-string (gzipped-input-stream->str content "UTF-8")))
+       (catch com.amazonaws.AmazonClientException e false)))))
 
 (defn list-applications []
   (map :key
        (:objects (s3/list-objects cred bucket {:prefix "applications/"}))))
 
 (comment
+  (list-applications)
+
   (map :key
        (:objects (s3/list-objects cred bucket)))
   (slurp (:content (s3/get-object cred bucket "multipart-stream-test")))
