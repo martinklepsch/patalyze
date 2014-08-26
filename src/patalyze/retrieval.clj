@@ -7,6 +7,11 @@
 (def ^:dynamic *applications-biblio-url*
   "http://www.google.com/googlebooks/uspto-patents-applications-biblio.html")
 
+(def archive-dir
+  (str (env :data-dir) "/applications/"))
+(def cache-dir
+  (str (env :data-dir) "/cache/applications/"))
+
 (defn fetch-url [url]
   (html/html-resource (java.net.URL. url)))
 
@@ -17,35 +22,71 @@
 
 (defn patent-application-files []
   "Find all xmls in the resources/patent_archives/ directory"
-  (let [directory (clojure.java.io/file (str (env :data-dir) "/applications/"))
+  (let [directory (clojure.java.io/file archive-dir)
         files     (filter #(re-seq #"\.zip" %) (map str (file-seq directory)))]
      (sort-by
        #(apply str (re-seq #"\d{6}" %))
        files)))
 
-(defn applications-by-year []
-  (let [directory (clojure.java.io/file (str (env :data-dir) "/applications/"))
-        files     (filter #(re-seq #"\.zip" %) (map str (file-seq directory)))
-        year      #(keyword (last (first (re-seq #"pab(20\d{2})" (str %)))))]
-    (group-by year files)))
+(defn cached-applications []
+  (let [directory (clojure.java.io/file cache-dir)
+        files     (filter #(re-seq #"\.edn.gz" %) (map str (file-seq directory)))]
+     (sort-by
+       #(apply str (re-seq #"\d{6}" %))
+       files)))
 
-(defn not-downloaded []
-  (let [week-ids   (map #(clojure.string/replace % #"\.zip$" "") (keys (archive-links)))
-        on-fs?     (fn [wkid] (some #(re-seq (re-pattern wkid) %) (patent-application-files)))
-        not-on-fs  (select-keys (archive-links) (map #(str % ".zip") (remove on-fs? week-ids)))]
-    (sort-by
-      #(apply str (re-seq #"\d{6}" (key %)))
-      not-on-fs)))
+(defn extract-archive-identifier [from-str]
+  (last (first (re-seq #"(\d{8}_wk\d{2})." from-str))))
 
-(defn copy-uri-to-file [[file uri]]
-  (with-open [in (clojure.java.io/input-stream uri)
-              out (clojure.java.io/output-stream (str (env :data-dir) "/applications/" file))]
-    (do
+(defn identifier-contained? [l-ident ident]
+  (if ((set l-ident) ident) true false))
+
+(defn status []
+  ;; https://github.com/flatland/useful/blob/develop/src/flatland/useful/state.clj#L78
+  ;; Look into the stuff above to cache archive-links, patent-application-files and
+  ;; list-applications functions
+  (let [links       (archive-links)
+        files       (map extract-archive-identifier (patent-application-files))
+        s3-objects  (map extract-archive-identifier (list-applications))
+        cached      (map extract-archive-identifier (cached-applications))
+        downloaded? (partial identifier-contained? files)
+        on-s3?      (partial identifier-contained? s3-objects)
+        cached?     (partial identifier-contained? cached)]
+    (into {}
+
+          (map (fn [[k v]]
+                 ;; (for [k (map extract-archive-identifier (keys links))
+                 ;;       v (vals links)]
+                 {(extract-archive-identifier k) {:uri v :on-disk (downloaded? k) :on-s3 (on-s3? k)
+                     :cached (cached? k)}})
+               links))))
+
+(defn map-subset? [sub, super]
+  (= sub (select-keys super (keys sub))))
+
+(defn where
+  "Query a map with optional prefix to limit keys
+
+   Examples:
+    (where (status) {:on-disk true :on-s3 false})
+    (where (status) {:on-s3 false} \"2013\")"
+  ([map submap]
+     (where map submap nil))
+  ([map submap prefix]
+     (into {}
+           (filter #(and (if prefix (.startsWith (key %) prefix) true)
+                         (map-subset? submap (val %)))
+                   map))))
+
+(defn copy-archive-from-uri [uri]
+  (let [ext   (str "." (last (clojure.string/split uri #"\.")))
+        ident (extract-archive-identifier uri)]
+    (with-open [in    (clojure.java.io/input-stream uri)
+                out   (clojure.java.io/output-stream (str archive-dir ident ext))]
       (clojure.java.io/copy in out))))
 
 (defn fetch-missing []
-  ;; TODO probably doseq is more appropriate here
-  (map copy-uri-to-file (not-downloaded)))
+  (map copy-archive-from-uri (map #(:uri (val %)) (where (status) {:on-disk false}))))
 
 (defn find-xml [zipfile]
   (first
@@ -66,40 +107,6 @@
   (with-open [zip (ZipFile. file-name)
               xml (.getInputStream zip (find-xml zip))]
     (split-file xml)))
-
-(defn extract-archive-identifier [from-str]
-  (last (first (re-seq #"(\d{8}_wk\d{2})." from-str))))
-
-(defn identifier-contained? [l-ident ident]
-  (if ((set l-ident) ident)
-    true
-    false))
-
-(defn status []
-  ;; https://github.com/flatland/useful/blob/develop/src/flatland/useful/state.clj#L78
-  ;; Look into the stuff above to cache archive-links, patent-application-files and
-  ;; list-applications functions
-  (let [links       (archive-links)
-        files       (map extract-archive-identifier (patent-application-files))
-        s3-objects  (map extract-archive-identifier (list-applications))
-        downloaded? (partial identifier-contained? files)
-        on-s3?      (partial identifier-contained? s3-objects)]
-    (into {}
-          (for [k (map extract-archive-identifier (keys links))
-                v (vals links)]
-            (let [ident (extract-archive-identifier k)]
-              {k {:url v :on-disk (downloaded? k) :on-s3 (on-s3? k)}})))))
-
-(defn where [map key value]
-  (into {}
-        (filter #(= value (key (val %)))
-                map)))
-
-;; (where (status) :on-disk true)
-
-;; 1. get all archive identifiers from website
-;; 2. tag them with status booleans (downloaded, on-S3)
-;; 3. make them queriable with substrings of archive identifiers like "201401"
 
 (comment
   ;; download files matching a certain string
