@@ -9,6 +9,9 @@
 
 (def archive-dir
   (str (env :data-dir) "/applications/"))
+(defn archive-path-from-identifier [ident]
+  (str archive-dir ident ".zip"))
+
 (def cache-dir
   (str (env :data-dir) "/cache/applications/"))
 
