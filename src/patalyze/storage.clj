@@ -29,30 +29,34 @@
   (let [string-val (pr-str applications)
         key        (str "applications/" (name pub-date) ".edn.gz")
         cache      (str (env :data-dir ) "/cache/applications/" (name pub-date) ".edn.gz")
-        gzipped    (ByteArrayInputStream. (str->gzipped-bytes string-val))]
+        gzipped    (str->gzipped-bytes string-val)
+        in-stream  (ByteArrayInputStream. gzipped)]
     (with-open [out (clojure.java.io/output-stream cache)]
       (do
-        (clojure.java.io/copy gzipped out)
+        (clojure.java.io/copy in-stream out)
         (try
-          (s3/put-object cred bucket key gzipped {:content-encoding "gzip"})
+          (s3/put-object cred bucket key in-stream {:content-encoding "gzip"})
+                                                   ;; :content-length (count gzipped)})))))
           (catch com.amazonaws.AmazonClientException e false))))))
 
-(defn retrieve-applications [pub-date]
-  (let [key      (str "applications/" (name pub-date) ".edn")
-        cache    (str (env :data-dir ) "/cache/applications/" (name pub-date) ".edn.gz")
+(defn retrieve-applications [ident]
+  (let [key      (str "applications/" ident ".edn.gz")
+        cache    (str (env :data-dir ) "/cache/applications/" ident ".edn.gz")
         get-obj  #(clojure.java.io/input-stream (:content (s3/get-object cred bucket key)))]
     (if (.exists (clojure.java.io/file cache))
-     (gzipped-input-stream->str (clojure.java.io/input-stream cache) "UTF-8")
-     (try
-       (with-open [content (get-obj)
-                   out     (clojure.java.io/output-stream cache)]
-         (clojure.java.io/copy content out)
-         (read-string (gzipped-input-stream->str content "UTF-8")))
-       (catch com.amazonaws.AmazonClientException e false)))))
+     (read-string (gzipped-input-stream->str
+                   (clojure.java.io/input-stream cache)
+                   "UTF-8"))
+     (with-open [content (get-obj)
+                 out     (clojure.java.io/output-stream cache)]
+       (clojure.java.io/copy content out)
+       (read-string (gzipped-input-stream->str content "UTF-8"))))))
 
 (defn list-applications []
-  (map :key
-       (:objects (s3/list-objects cred bucket {:prefix "applications/"}))))
+  (try
+    (map :key
+         (:objects (s3/list-objects cred bucket {:prefix "applications/"})))
+    (catch com.amazonaws.AmazonClientException e [])))
 
 (comment
   (list-applications)
