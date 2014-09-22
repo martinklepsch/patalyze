@@ -153,19 +153,21 @@
           nil))
       snippets)))
 
-(defn parse-to-s3 [xml-archive]
-  (let [s3-key (last (first (re-seq #".+pab(\d{8}_wk\d{2}).zip" xml-archive)))]
+(defn parse-to-s3 [ident]
+  (let [xml-archive (retrieval/archive-path-from-identifier ident)]
     (storage/store-applications
-     s3-key
+     ident
      (read-file xml-archive))
-    (info s3-key "persisted to S3")))
+    (info ident "persisted to S3")))
 
 (comment
   (clojure.set/subset?
    (tokenize-string "Apple, Inc.")
    (tokenize-string "Apple Computer, Inc."))
   ;; Patents in 2014: 230083
-  ;; (pmap parse-to-s3 (rest (:2014 (retrieval/applications-by-year))))
-  (parse-to-s3 (last (:2014 (retrieval/applications-by-year))))
+  (pmap parse-to-s3 (rest (:2014 (retrieval/applications-by-year))))
+
+  (pmap parse-to-s3 (take 2 (:2014 (retrieval/applications-by-year))))
+
   (take 3 (:2014 (retrieval/applications-by-year))))
   ;; (count (storage/retrieve-map ":2004"))
