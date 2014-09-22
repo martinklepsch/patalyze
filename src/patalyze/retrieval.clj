@@ -765,12 +765,12 @@
         on-s3?      (partial identifier-contained? s3-objects)
         cached?     (partial identifier-contained? cached)]
     (into {}
-
           (map (fn [[k v]]
-                 ;; (for [k (map extract-archive-identifier (keys links))
-                 ;;       v (vals links)]
-                 {(extract-archive-identifier k) {:uri v :on-disk (downloaded? k) :on-s3 (on-s3? k)
-                     :cached (cached? k)}})
+                 (let [k (extract-archive-identifier k)]
+                   ;; (for [k (map extract-archive-identifier (keys links))
+                   ;;       v (vals links)]
+                   {k {:uri v :on-disk (downloaded? k)
+                       :on-s3 (on-s3? k) :cached (cached? k)}}))
                links))))
 
 (defn map-subset? [sub, super]
