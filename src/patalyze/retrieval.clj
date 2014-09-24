@@ -730,8 +730,6 @@
     "pab20010823_wk34.zip" "http://storage.googleapis.com/patents/appl_bib/2001/pab20010823_wk34.zip",
     "pab20020502_wk18.zip" "http://storage.googleapis.com/patents/appl_bib/2002/pab20020502_wk18.zip"})))
 
-(archive-links)
-
 (defn patent-application-files []
   "Find all xmls in the resources/patent_archives/ directory"
   (let [directory (clojure.java.io/file archive-dir)
@@ -797,8 +795,8 @@
                 out   (clojure.java.io/output-stream (str archive-dir ident ext))]
       (clojure.java.io/copy in out))))
 
-(defn fetch-missing []
-  (map copy-archive-from-uri (map #(:uri (val %)) (where (status) {:on-disk false}))))
+(defn fetch [status-entry]
+  (copy-archive-from-uri (:uri (val status-entry))))
 
 (defn find-xml [zipfile]
   (first

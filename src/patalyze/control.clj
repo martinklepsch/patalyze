@@ -1,9 +1,9 @@
 (ns patalyze.control
-  (:require [patalyze.retrieval :refer [status where]]
+  (:require [patalyze.retrieval :refer [status where fetch]]
             [patalyze.parser    :refer [parse-to-s3]]
             [patalyze.storage   :refer [retrieve-applications]]))
 
-(set! *print-length* 50)
+(set! *print-length* 100)
 (set! *print-level* nil)
 
 (def db
@@ -34,7 +34,8 @@
 
 (comment
   (defn o [n] (take n (where (status) {:cached true})))
-  (load-into-atom db (o 1100))
+
+  (load-into-atom db (o 20))
 
   (fetch (take 3 (where (status) {:on-s3 false :on-disk false})))
   (keys (where (status) {:on-s3 false :on-disk true}))
