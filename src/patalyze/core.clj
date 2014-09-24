@@ -43,9 +43,15 @@
       (wrap-reload)
       (wrap-params)))
 
+(defn ensure-dirs-exist [& directories]
+  (doseq [p directories]
+    (if-not (.exists (clojure.java.io/as-file p))
+      (.mkdir (java.io.File. p)))))
+
 (defn -main [& _]
   "The application's main function"
   (initialize-logger!)
+  (ensure-dirs-exist (map #(str (env :data-dir) %) "/applications" "/cache"))
   (nrepl/start-server :bind "0.0.0.0" :port 42042)
   (run-jetty #'handler {:port 3000 :join? false})
   (info "nREPL Server started on port 42042")) ; :handler (default-handler lighttable-ops)))
