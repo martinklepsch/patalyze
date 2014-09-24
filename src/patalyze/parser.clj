@@ -165,7 +165,7 @@
    (tokenize-string "Apple, Inc.")
    (tokenize-string "Apple Computer, Inc."))
   ;; Patents in 2014: 230083
-  (pmap parse-to-s3 (rest (:2014 (retrieval/applications-by-year))))
+  (pmap parse-to-s3 (take 2 (retrieval/where (retrieval/status) {:on-s3 false :on-disk true})))
 
   (pmap parse-to-s3 (take 2 (:2014 (retrieval/applications-by-year))))
 
