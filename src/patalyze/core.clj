@@ -51,7 +51,9 @@
 (defn -main [& _]
   "The application's main function"
   (initialize-logger!)
-  (ensure-dirs-exist (map #(str (env :data-dir) %) "/applications" "/cache"))
+  (ensure-dirs-exist (str (env :data-dir) "/applications")
+                     (str (env :data-dir) "/cache")
+                     (str (env :data-dir) "/cache/applications"))
   (nrepl/start-server :bind "0.0.0.0" :port 42042)
   (run-jetty #'handler {:port 3000 :join? false})
   (info "nREPL Server started on port 42042")) ; :handler (default-handler lighttable-ops)))
