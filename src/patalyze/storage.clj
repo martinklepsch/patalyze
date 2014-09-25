@@ -2,7 +2,7 @@
   (:require [environ.core   :refer [env]]
             [aws.sdk.s3     :as s3]
             [clojure.string :as s])
-  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
+  (:import [java.io File ByteArrayInputStream ByteArrayOutputStream]
            [java.util.zip GZIPInputStream GZIPOutputStream]
            [org.apache.commons.io IOUtils]))
 
@@ -36,11 +36,10 @@
 
 (defn upload-cached [ident]
   (let [key        (str "applications/" (name ident) ".edn.gz")
-        cached     (str (env :data-dir ) "/cache/applications/" (name ident) ".edn.gz")
-        in-stream  (ByteArrayInputStream. gzipped)]
+        cached     (str (env :data-dir ) "/cache/applications/" (name ident) ".edn.gz")]
     (with-open [in-stream (clojure.java.io/input-stream cached)]
-      (s3/put-object cred bucket key in-stream {:content-encoding "gzip"}))))
-                                                   ;; :content-length (count gzipped)})))))
+      (s3/put-object cred bucket key in-stream {:content-encoding "gzip"
+                                                :content-length (.length (File. cached))}))))
 
 (defn download [ident]
   (let [key      (str "applications/" ident ".edn.gz")
@@ -54,7 +53,7 @@
      ;;               (clojure.java.io/input-stream cache)
      ;;               "UTF-8"))
 
-(defn load-from-cache [ident]
+(defn load-cached [ident]
   (let [cache    (str (env :data-dir ) "/cache/applications/" ident ".edn.gz")]
     (if (.exists (clojure.java.io/file cache))
       (read-string (gzipped-input-stream->str
