@@ -160,6 +160,13 @@
      (read-file xml-archive))
     (info ident "persisted to S3")))
 
+(defn parse-and-cache [ident]
+  (let [xml-archive (retrieval/archive-path-from-identifier ident)]
+    (storage/cache
+     ident
+     (read-file xml-archive))
+    (info ident "cached on disk")))
+
 (comment
   (clojure.set/subset?
    (tokenize-string "Apple, Inc.")
@@ -167,7 +174,7 @@
   ;; Patents in 2014: 230083
   (pmap parse-to-s3 (take 2 (retrieval/where (retrieval/status) {:on-s3 false :on-disk true})))
 
-  (pmap parse-to-s3 (take 2 (:2014 (retrieval/applications-by-year))))
+  (parse-and-cache (first (keys (retrieval/where (retrieval/status) {:on-disk true}))))
 
   (take 3 (:2014 (retrieval/applications-by-year))))
   ;; (count (storage/retrieve-map ":2004"))
