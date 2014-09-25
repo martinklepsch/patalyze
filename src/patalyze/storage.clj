@@ -25,32 +25,41 @@
     (.close input-stream)
     (.toString out encoding)))
 
-(defn store-applications [pub-date applications]
+(defn cache [ident applications]
   (let [string-val (pr-str applications)
-        key        (str "applications/" (name pub-date) ".edn.gz")
-        cache      (str (env :data-dir ) "/cache/applications/" (name pub-date) ".edn.gz")
+        key        (str "applications/" (name ident) ".edn.gz")
+        cache      (str (env :data-dir ) "/cache/applications/" (name ident) ".edn.gz")
         gzipped    (str->gzipped-bytes string-val)
         in-stream  (ByteArrayInputStream. gzipped)]
     (with-open [out (clojure.java.io/output-stream cache)]
-      (do
-        (clojure.java.io/copy in-stream out)
-        (try
-          (s3/put-object cred bucket key in-stream {:content-encoding "gzip"})
-                                                   ;; :content-length (count gzipped)})))))
-          (catch com.amazonaws.AmazonClientException e false))))))
+      (clojure.java.io/copy in-stream out))))
 
-(defn retrieve-applications [ident]
+(defn upload-cached [ident]
+  (let [key        (str "applications/" (name ident) ".edn.gz")
+        cached     (str (env :data-dir ) "/cache/applications/" (name ident) ".edn.gz")
+        in-stream  (ByteArrayInputStream. gzipped)]
+    (with-open [in-stream (clojure.java.io/input-stream cached)]
+      (s3/put-object cred bucket key in-stream {:content-encoding "gzip"}))))
+                                                   ;; :content-length (count gzipped)})))))
+
+(defn download [ident]
   (let [key      (str "applications/" ident ".edn.gz")
         cache    (str (env :data-dir ) "/cache/applications/" ident ".edn.gz")
         get-obj  #(clojure.java.io/input-stream (:content (s3/get-object cred bucket key)))]
+    (if-not (.exists (clojure.java.io/file cache))
+      (with-open [content (get-obj)
+                  out     (clojure.java.io/output-stream cache)]
+        (clojure.java.io/copy content out)))))
+     ;; (read-string (gzipped-input-stream->str
+     ;;               (clojure.java.io/input-stream cache)
+     ;;               "UTF-8"))
+
+(defn load-from-cache [ident]
+  (let [cache    (str (env :data-dir ) "/cache/applications/" ident ".edn.gz")]
     (if (.exists (clojure.java.io/file cache))
-     (read-string (gzipped-input-stream->str
+      (read-string (gzipped-input-stream->str
                    (clojure.java.io/input-stream cache)
-                   "UTF-8"))
-     (with-open [content (get-obj)
-                 out     (clojure.java.io/output-stream cache)]
-       (clojure.java.io/copy content out)
-       (read-string (gzipped-input-stream->str content "UTF-8"))))))
+                   "UTF-8")))))
 
 (defn list-applications []
   (try

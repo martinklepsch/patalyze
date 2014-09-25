@@ -1,7 +1,7 @@
 (ns patalyze.control
   (:require [patalyze.retrieval :refer [status where get-archive]]
             [patalyze.parser    :refer [parse-to-s3]]
-            [patalyze.storage   :refer [retrieve-applications]]))
+            [patalyze.storage   :refer [cache upload-cached download load-cached]]))
 
 (set! *print-length* 100)
 (set! *print-level* nil)
@@ -32,13 +32,27 @@
         :when (> freq 1)]            ;; this is the filter condition
    id))
 
+
 (comment
+  (take 10 (load-cached (first (keys  (where (status) {:cached true})))))
   (defn o [n] (take n (where (status) {:cached true})))
 
   (load-into-atom db (o 20))
 
-  (fetch (take 3 (where (status) {:on-s3 false :on-disk false})))
-  (keys (where (status) {:on-s3 false :on-disk true}))
+  (get-archive (take 3 (where (status) {:on-s3 false :on-disk false})))
+  (map download (keys (where (status) {:on-s3 true :cached false} "2013")))
+
+  (count (where (status) {:on-s3 true :cached true} "2013"))
+
+  (map parse-to-s3 (take 5 (keys (where (status) {:on-s3 false :on-disk true}))))
+
+  (/ 990 11)
+
+  (let [cores      8
+        to-parse   (keys (where (status) {:on-s3 false :on-disk true}))
+        chunk-size (/ (count to-parse) cores)]
+    (pmap #(map parse-to-s3 %) (partition-all chunk-size to-parse)))
+
 
   (map parse-to-s3 (take 1 (keys (where (status) {:on-s3 false :on-disk true}))))
 
