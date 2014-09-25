@@ -19,7 +19,7 @@
                   :patents         (clojure.set/union (:patents old)
                                                       archive-patents)})
              (set [k])
-             (set (retrieve-applications k)))
+             (set (load-cached k)))
       (println k))
     {:archives-loaded (count (:loaded-archives @a))
      :new-archives-added to-add
@@ -35,14 +35,18 @@
 
 (comment
   (take 10 (load-cached (first (keys  (where (status) {:cached true})))))
-  (defn o [n] (take n (where (status) {:cached true})))
 
-  (load-into-atom db (o 20))
+  (defn o [n] (take n (where (status) {:cached true} "2013")))
+
+  (map get-archive (o 2))
+
+  (keys (o 2))
+  (count (load-cached "20131121_wk47"))
 
   (get-archive (take 3 (where (status) {:on-s3 false :on-disk false})))
   (map download (keys (where (status) {:on-s3 true :cached false} "2013")))
 
-  (count (where (status) {:on-s3 true :cached true} "2013"))
+  (count (where (status) {:on-s3 true :cached false} "2013"))
 
   (map parse-to-s3 (take 5 (keys (where (status) {:on-s3 false :on-disk true}))))
 
