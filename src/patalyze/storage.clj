@@ -25,7 +25,7 @@
     (.close input-stream)
     (.toString out encoding)))
 
-(defn cache [ident applications]
+(defn cache [[ident applications]]
   (let [string-val (pr-str applications)
         key        (str "applications/" (name ident) ".edn.gz")
         cache      (str (env :data-dir ) "/cache/applications/" (name ident) ".edn.gz")

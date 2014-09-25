@@ -20,7 +20,7 @@
                           dtd-matcher
                           #(str "resources/parsedir/" %1)))
 
-(defn parse [xml-str]
+(defn parse-patent-xml [xml-str]
   "Reads a string and returns an xml zipper"
   (html/xml-resource
     (java.io.ByteArrayInputStream.
@@ -130,7 +130,7 @@
 
 (defn patentxml->map [xml-str]
   (let [version       (detect-version xml-str)
-        xml-resource  (parse xml-str)
+        xml-resource  (parse-patent-xml xml-str)
         organization  (orgname version xml-resource)
         inventor-list (inventors version xml-resource)]
     {:version             version
@@ -153,28 +153,23 @@
           nil))
       snippets)))
 
-(defn parse-to-s3 [ident]
+(defn parse [ident]
   (let [xml-archive (retrieval/archive-path-from-identifier ident)]
-    (storage/store-applications
-     ident
-     (read-file xml-archive))
-    (info ident "persisted to S3")))
-
-(defn parse-and-cache [ident]
-  (let [xml-archive (retrieval/archive-path-from-identifier ident)]
-    (storage/cache
-     ident
-     (read-file xml-archive))
-    (info ident "cached on disk")))
+    (info ident "parsing...")
+    [ident (read-file xml-archive)]))
 
 (comment
   (clojure.set/subset?
    (tokenize-string "Apple, Inc.")
    (tokenize-string "Apple Computer, Inc."))
   ;; Patents in 2014: 230083
-  (pmap parse-to-s3 (take 2 (retrieval/where (retrieval/status) {:on-s3 false :on-disk true})))
+  (pmap parse-and-cache (take 2 (retrieval/where (retrieval/status) {:on-s3 false :on-disk true})))
 
   (parse-and-cache (first (keys (retrieval/where (retrieval/status) {:on-disk true}))))
+
+  (count (retrieval/where (retrieval/status) {:on-disk true}))
+
+  (parse-and-cache (second (keys (retrieval/where (retrieval/status) {:on-disk true}))))
 
   (take 3 (:2014 (retrieval/applications-by-year))))
   ;; (count (storage/retrieve-map ":2004"))
