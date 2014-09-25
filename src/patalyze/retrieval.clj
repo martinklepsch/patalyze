@@ -795,7 +795,7 @@
                 out   (clojure.java.io/output-stream (str archive-dir ident ext))]
       (clojure.java.io/copy in out))))
 
-(defn fetch [status-entry]
+(defn get-archive [status-entry]
   (copy-archive-from-uri (:uri (val status-entry))))
 
 (defn find-xml [zipfile]

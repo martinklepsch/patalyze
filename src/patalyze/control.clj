@@ -1,5 +1,5 @@
 (ns patalyze.control
-  (:require [patalyze.retrieval :refer [status where fetch]]
+  (:require [patalyze.retrieval :refer [status where get-archive]]
             [patalyze.parser    :refer [parse-to-s3]]
             [patalyze.storage   :refer [retrieve-applications]]))
 
