@@ -6,6 +6,7 @@
 
   :dependencies [[org.clojure/clojure "1.7.0-alpha1"]
                  [org.clojure/core.match "0.2.1"]
+                 [com.climate/claypoole "0.3.1"]
                  [prismatic/schema "0.2.1"]
                  [com.taoensso/timbre "3.2.1"]
                  [riemann-clojure-client "0.2.11"]

@@ -1,7 +1,8 @@
 (ns patalyze.control
   (:require [patalyze.retrieval :refer [status where get-archive]]
-            [patalyze.parser    :refer [parse-and-cache]]
-            [patalyze.storage   :refer [cache upload-cached download load-cached]]))
+            [patalyze.parser    :refer [parse]]
+            [patalyze.storage   :refer [cache upload-cached download load-cached]]
+            [com.climate.claypoole :as cp]))
 
 (set! *print-length* 100)
 (set! *print-level* nil)
@@ -41,25 +42,23 @@
   (map get-archive (o 2))
 
   (keys (o 2))
+
   (upload-cached "20131121_wk47")
+  (first (vals (parse "20010322_wk12")))
 
+  (map get-archive (take 3 (where (status) {:on-s3 false :on-disk false})))
+  (pmap get-archive (where (status) {:on-s3 true} "2001"))
 
-
-
-  (get-archive (take 3 (where (status) {:on-s3 false :on-disk false})))
-  (map download (keys (where (status) {:on-s3 true :cached false} "2013")))
+  (keys (where (status) {:on-s3 true} "200103"))
 
   (count (where (status) {:on-s3 true :cached false} "2013"))
 
   (map parse-to-s3 (take 5 (keys (where (status) {:on-s3 false :on-disk true}))))
 
-  (/ 990 11)
-
-  (let [cores      8
-        to-parse   (keys (where (status) {:on-s3 false :on-disk true}))
-        chunk-size (/ (count to-parse) cores)]
-    (pmap #(map parse-to-s3 %) (partition-all chunk-size to-parse)))
-
+  (let [chunks     4
+        to-parse   (keys (where (status) {:on-disk true} "2001"))
+        chunk-size (/ (count to-parse) chunks)]
+    (cp/pmap chunks #(map cache (doall (map parse %))) (partition-all chunk-size to-parse)))
 
   (map parse-to-s3 (take 1 (keys (where (status) {:on-s3 false :on-disk true}))))
 
