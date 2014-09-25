@@ -1,6 +1,6 @@
 (ns patalyze.control
   (:require [patalyze.retrieval :refer [status where get-archive]]
-            [patalyze.parser    :refer [parse-to-s3]]
+            [patalyze.parser    :refer [parse-and-cache]]
             [patalyze.storage   :refer [cache upload-cached download load-cached]]))
 
 (set! *print-length* 100)
@@ -41,7 +41,10 @@
   (map get-archive (o 2))
 
   (keys (o 2))
-  (count (load-cached "20131121_wk47"))
+  (upload-cached "20131121_wk47")
+
+
+
 
   (get-archive (take 3 (where (status) {:on-s3 false :on-disk false})))
   (map download (keys (where (status) {:on-s3 true :cached false} "2013")))
