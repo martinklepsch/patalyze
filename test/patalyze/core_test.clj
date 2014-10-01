@@ -2,20 +2,20 @@
   (:require [clojure.test :refer :all]
             [patalyze.core :refer :all]))
 
-(clojure.test/run-tests)
+;; (clojure.test/run-tests)
 
-(def inventors
-  {:v15 ["Lawrence A. Clark" "James L. Priest"]
-   :v43 ["Daniel Francis Lowery" "Jon M. Malinoski"]})
+;; (def inventors
+;;   {:v15 ["Lawrence A. Clark" "James L. Priest"]
+;;    :v43 ["Daniel Francis Lowery" "Jon M. Malinoski"]})
 
-(deftest inventors-test
-  (testing "inventors v15"
-    (is (= (:inventors (patentxml->map (:v15 (version-samples))))
-          '("Lawrence A. Clark" "James L. Priest"))))
+;; (deftest inventors-test
+;;   (testing "inventors v15"
+;;     (is (= (:inventors (patentxml->map (:v15 (version-samples))))
+;;           '("Lawrence A. Clark" "James L. Priest"))))
 
-  (testing "Inventors v43"
-    (is (= (:inventors (patentxml->map (:v43 (version-samples))))
-          '("Daniel Francis Lowery" "Jon M. Malinoski")))))
+;;   (testing "Inventors v43"
+;;     (is (= (:inventors (patentxml->map (:v43 (version-samples))))
+;;           '("Daniel Francis Lowery" "Jon M. Malinoski")))))
 ;;           '("David C. Holland")
 ;;           '("Tina Goldkind")
 ;;           '("Andrea Tomann" "Ken Zemach" "Bill McDonough" "Tim Smith")
