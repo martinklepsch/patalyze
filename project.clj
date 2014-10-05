@@ -13,7 +13,7 @@
                  [org.clojure/tools.nrepl "0.2.3"]
                  [clojurewerkz/elastisch "2.0.0"]
                  [clj-aws-s3 "0.3.9"]
-                 [enlive "1.1.5"]
+                 ;[enlive "1.1.5"]
 
                  [liberator "0.12.0"]
                  [compojure "1.1.8"]
@@ -21,13 +21,16 @@
                  [ring/ring-devel "1.3.0"]
                  [ring/ring-jetty-adapter "1.3.0"]
                  [environ "0.5.0"]]
+
                  ; [lein-light-nrepl "0.0.17"]]
 
+  :git-dependencies [["https://github.com/cgrand/enlive.git"]]
   :plugins [[lein-environ "0.5.0"]
-            [lein-ring "0.8.10"]]
+            [lein-ring "0.8.10"]
+            [lein-git-deps "0.0.2-SNAPSHOT"]]
   ; :repl-options {:nrepl-middleware [lighttable.nrepl.handler/lighttable-ops]}
   :profiles {:dev {:repl-options {:init-ns patalyze.core
-                                  :init (initialize-logger!)}
+                                  :init nil #_(initialize-logger!)}
                    :env {:data-dir      "data"
                          :db-private    "127.0.0.1"
                          :elasticsearch "http://127.0.0.1:9200"
