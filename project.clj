@@ -20,6 +20,7 @@
                  [ring/ring-core "1.3.0"]
                  [ring/ring-devel "1.3.0"]
                  [ring/ring-jetty-adapter "1.3.0"]
+                 [com.gfredericks/compare "0.1.0"]
                  [environ "0.5.0"]]
 
                  ; [lein-light-nrepl "0.0.17"]]
